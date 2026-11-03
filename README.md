@@ -21,6 +21,12 @@ U-Boot autoboot interrupted using key 'd'.
 
 Status: UBOOT_UART_CONTROL_PASS
 
+## Пошаговая инструкция: UART → Linux root shell
+
+[**EBAZ-03 — Подключение USB–TTL, перехват U-Boot клавишей `d` и загрузка Linux без майнера до приглашения `sh-4.3#`**](docs/EBAZ-03_UART_LINUX_SHELL_RU.md)
+
+Проверено на реальной плате. Заводская NAND не изменяется; режим диагностический (`init=/bin/sh`, корневая файловая система только для чтения).
+
 ## Project goals
 
 1. Preserve factory firmware and configuration.
