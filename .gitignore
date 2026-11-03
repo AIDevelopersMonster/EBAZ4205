@@ -1,0 +1,10 @@
+/evidence/raw/
+/evidence/private/
+/build/
+/out/
+*.bit
+*.bin
+*.img
+*.dump
+*.key
+*.pem
