@@ -122,3 +122,16 @@
 **Ограничение:** для виртуального корневого inode 1 в JFFS2 нет отдельного `raw_inode`; атрибуты root каталога `/` не проверены. `ROUNDTRIP_PASS` не означает, что текущий старый kernel и bootloader гарантированно загрузят образ, что NAND здорова, или что отсутствует вредоносное ПО. Компоненты U-Boot, kernel, FPGA boot partitions не изменены.
 
 **Следующий шаг EBAZ-19.8:** безопасная инвентаризация механизма загрузки и доступной RAM на действующей плате, затем подготовка и практическая проверка **независимой RAM-rescue среды** с возможностью записи и обратного восстановления только `mtd6` при ошибке. Не использовать `flash_erase`, `nandwrite`, `saveenv` до завершения независимого восстановления и подтверждения NAND write/read workflow.
+
+## EBAZ-19.8 — RAM rescue kernel capability preflight (2026-11-05)
+
+**Read-only SSH result from current running board**:
+
+- Kernel: `Linux 4.6.0-xilinx`, armv7l, Zynq.
+- `/proc/cmdline`: `console=ttyPS0,115200 root=/dev/mtdblock6 rootfstype=jffs2 noinitrd rw rootwait`.
+- NAND `mtd6`: `04000000` bytes (64 MiB), erase size `00020000` (128 KiB); 9 MTD partitions (mtd0–mtd8). **Only mtd6 is proposed for eventual recovery, not other boot partitions.**
+- `MemTotal: 252032 kB`, `MemAvailable: 235748 kB` at measurement.
+- `CONFIG_BLK_DEV_INITRD=y`, `CONFIG_RD_GZIP=y`, `CONFIG_DEVTMPFS=y`.
+- Filesystems `rootfs`, `ramfs`, `tmpfs`, `devtmpfs`, `nfs`, `jffs2` available.
+
+**Conclusion:** capability preflight PASS, not yet a tested independent rescue boot. Next: inventory ARM BusyBox and dynamic-loader dependencies, MTD write/erase commands, ramdisk options, and U-Boot's bootm/TFTP path. Prepare gzip cpio rescue with `/init` in RAM, retaining UART access and read-only MTD diagnostics, then test actual boot before any mtd6 change. Existing `noinitrd` must be removed from *temporary* rescue bootargs, and U-Boot `saveenv` must never be used during testing.
