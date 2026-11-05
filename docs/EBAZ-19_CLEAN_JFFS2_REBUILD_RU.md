@@ -143,3 +143,15 @@ Read-only ELF inspection of the verified staging TAR on CHUWI established that a
 **RAM rescue v7 prepared but NOT tested on hardware.** Local builder `09_build_rescue_initramfs_v7.py` accepts only the v5 candidate TAR with SHA256 `a257ba577722b8b8b808cfa3a76152895a1b2967df0325d686a0c9a277204785`, extracts only allowlisted ARM executables and their link-target libraries, produces newc CPIO with `/dev/console` (5,1), gzip initramfs and U-Boot legacy ramdisk image using `mkimage`. It refuses to overwrite a previous output directory and makes no connection to the board. The CPIO file list and special device records passed synthetic offline tests. Actual ARM ELF and U-Boot image validation will occur on CHUWI after building from the real TAR.
 
 **Next:** create the v7 rescue archive in Ubuntu WSL2; inspect actual U-Boot boot sequence using only `printenv` over UART; do not guess boot addresses or issue persistent bootloader changes. NAND remains unchanged until independent rescue-boot and rollback readiness are demonstrated.
+
+## EBAZ-19.11 — RAM-rescue v7 assembled successfully (2026-11-05)
+
+Status: offline-built only; no board connection, no NAND writes.
+
+- ARM ELF dependencies PASS for BusyBox (`libc.so.6`, `libm.so.6`) and NAND utilities (`libc.so.6`); loader `/lib/ld-linux-armhf.so.3`.
+- `EBAZ19_RESCUE_V7_CPIO_PASS`: 37 entries.
+- `EBAZ19_RESCUE_V7_INITRD_PASS`: 1,419,057 bytes.
+- `EBAZ19_RESCUE_V7_UINITRD_PASS`: 1,419,121 bytes.
+- `EBAZ19_RESCUE_V7_BUILD_PASS`.
+- Local path (CHUWI WSL2): `/home/alex/EBAZ4205_EBAZ19/rescue-v7`.
+- Pending: verify mkimage header, inspect actual U-Boot 2015.07 environment and its loading commands from UART, load rescue using verified RAM addresses, confirm standalone shell and MTD read-only access, then validate recoverability before even considering writing mtd6. Do not use `saveenv`.
