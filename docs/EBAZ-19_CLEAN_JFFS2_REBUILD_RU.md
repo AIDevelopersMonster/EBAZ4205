@@ -218,3 +218,16 @@ RAM-rescue v7 UART hardware results:
 - First 8 MiB chunk `/tmp/mtd6_part00.bin` uploaded by BusyBox TFTP PUT to CHUWI `192.168.1.79` (temporarily writing permitted by Tftpd32); exit 0 and size 8388608 bytes.
 - First chunk SHA-256 measured on board and CHUWI, **match**: `acb2c04fa554dd18a7ceb70fbec9d4074feb965281fab0c1fe1f66f0bc7a6132`.
 - Remaining parts 01..07 and complete offboard SHA comparison **not yet evidenced**. Must assemble binary-safely and check exact length + full SHA before marking external backup verified. Afterwards restore TFTP read-only and relocate backup outside TFTP share. Preserve private backups; never publish images or private keys to GitHub. Still no NAND erase/write.
+
+## EBAZ-19.38: autonomous boot with cleaned JFFS2 (2026-11-06)
+
+- Hardware UART boot log: U-Boot 2015.07 read bitstream, Linux kernel, and device tree from NAND; kernel image checksum OK.
+- Kernel command line: `console=ttyPS0,115200 root=/dev/mtdblock6 rootfstype=jffs2 noinitrd rw rootwait`.
+- Kernel message: `VFS: Mounted root (jffs2 filesystem) on device 31:6.`
+- SysVinit 2.88 booted and reached runlevel 5. Local UART `root@zedboard-zynq7:~#` prompt obtained.
+- GEM Ethernet PHY reported `link up (100/Full)`. Dropbear SSH service started.
+- DHCP reported `No lease, forking to background` *before* PHY link came up. DHCP address and SSH reachability after boot still require checking; autonomous system boot PASS does not imply networking PASS.
+- No evidence of miner process execution in boot log; confirm separately with process list.
+- Main NAND region mtd6 had previously passed full 64 MiB readback SHA-256 verification and read-only JFFS2 mount test. Independent RAM-rescue and offboard backup retained.
+
+Next: inspect `ifconfig eth0`, `route -n`, running udhcpc and Dropbear, and pid file on the booted OS; remedy any DHCP race before marking end-to-end success.
