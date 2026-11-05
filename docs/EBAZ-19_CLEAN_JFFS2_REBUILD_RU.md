@@ -176,3 +176,15 @@ Status: offline-built only; no board connection, no NAND writes.
 - **PASS meaning:** independent RAM rescue boot and UART shell actually operate. **Not yet established:** rescue MTD read/write access, reliable transport of original image, rollback under failure, boot with clean JFFS2 from NAND.
 
 **Next safe phase:** while at `/ #`, verify `/proc/cmdline`, root mount, `/dev/mtd6` and tool paths, optionally perform a *read-only* 2048-byte `nanddump` into RAM. No erase, nandwrite, or saveenv. Retain original NAND backups; do not write to `mtd6` until restoration procedure can be validated and user confirms the destructive phase.
+
+## EBAZ-19.18 — Rescue NAND read-only test PASS
+
+On the actual EBAZ4205 board, in the independent RAM-rescue v7 at UART prompt `/ #`:
+
+- `/proc/cmdline`: `console=ttyPS0,115200 rdinit=/init`.
+- `/dev/mtd6` exists as character device major 90 minor 12; `/dev/mtdblock6` as block device major 31 minor 6.
+- `/usr/sbin/nanddump`, `nandwrite`, and `flash_erase` exist in rescue; only `nanddump` was executed.
+- `/usr/sbin/nanddump -q --bb=padbad -s 0 -l 0x800 -f /tmp/mtd6_readtest.bin /dev/mtd6` returned exit code 0 and produced exactly 2048 bytes in RAM.
+- `grep` is not present in the minimal rescue; use `cat /proc/mounts` without piping to grep. The missing utility is not a kernel failure.
+
+**Status:** independent rescue boot + read-only MTD6 access confirmed. This test covers only one NAND page, **not** whole-partition read integrity or recoverability. Next check the rescue Ethernet link and TFTP GET for an existing file into RAM, to establish a transport path for an eventual rollback image. No `nandwrite`, `flash_erase`, `saveenv` or NAND writes authorized.
