@@ -135,3 +135,11 @@
 - Filesystems `rootfs`, `ramfs`, `tmpfs`, `devtmpfs`, `nfs`, `jffs2` available.
 
 **Conclusion:** capability preflight PASS, not yet a tested independent rescue boot. Next: inventory ARM BusyBox and dynamic-loader dependencies, MTD write/erase commands, ramdisk options, and U-Boot's bootm/TFTP path. Prepare gzip cpio rescue with `/init` in RAM, retaining UART access and read-only MTD diagnostics, then test actual boot before any mtd6 change. Existing `noinitrd` must be removed from *temporary* rescue bootargs, and U-Boot `saveenv` must never be used during testing.
+
+## EBAZ-19.10 — ELF-deps и подготовка RAM rescue v7
+
+Read-only ELF inspection of the verified staging TAR on CHUWI established that all five ARM binaries use the interpreter `/lib/ld-linux-armhf.so.3`. `busybox.nosuid` links `libm.so.6` and `libc.so.6`; `busybox.suid`, `nanddump`, `nandwrite` and `flash_erase` each link `libc.so.6`. The shell used on the main rootfs (`/bin/bash`) is not required for the minimal rescue: its `/bin/sh` points to BusyBox.
+
+**RAM rescue v7 prepared but NOT tested on hardware.** Local builder `09_build_rescue_initramfs_v7.py` accepts only the v5 candidate TAR with SHA256 `a257ba577722b8b8b808cfa3a76152895a1b2967df0325d686a0c9a277204785`, extracts only allowlisted ARM executables and their link-target libraries, produces newc CPIO with `/dev/console` (5,1), gzip initramfs and U-Boot legacy ramdisk image using `mkimage`. It refuses to overwrite a previous output directory and makes no connection to the board. The CPIO file list and special device records passed synthetic offline tests. Actual ARM ELF and U-Boot image validation will occur on CHUWI after building from the real TAR.
+
+**Next:** create the v7 rescue archive in Ubuntu WSL2; inspect actual U-Boot boot sequence using only `printenv` over UART; do not guess boot addresses or issue persistent bootloader changes. NAND remains unchanged until independent rescue-boot and rollback readiness are demonstrated.
