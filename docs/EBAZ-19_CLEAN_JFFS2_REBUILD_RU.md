@@ -199,3 +199,10 @@ Actual board UART run from RAM-rescue v7:
 - Safe next phase: verify source digest, check RAM free space, make a read-only **full mtd6** NAND backup through RAM-rescue, transfer it back to CHUWI (TFTP upload requires an intentionally configured temporary server-side write permission) and compare hash. Preserve backups and test rollback strategy before any NAND erase/program.
 
 **No NAND modifications made.**
+
+## EBAZ-19.20 — TFTP digest matches source; RAM root verified
+
+- WSL2 command `sha256sum ~/EBAZ4205_EBAZ19/rescue-v7/ebaz19-rescue-v7.uInitrd` produced `e78b94be65e281550c8109ad888a7194471bcf7ffdc987c55009aee0bc4dc73e`.
+- Board's `/bin/busybox.nosuid sha256sum /tmp/ebaz19-tftp-test.uInitrd` produced **the same digest**, confirming end-to-end file integrity for the TFTP GET transfer.
+- `cat /proc/mounts`: `rootfs / rootfs rw,size=116616k,nr_inodes=29154 0 0`, `devtmpfs /dev devtmpfs ...`, proc/sysfs. No root mount from mtd6. The `rootfs` maximum is ~114 MiB; actual available RAM and free rootfs space still need checking before temporarily holding a 64 MiB `mtd6` backup.
+- Next steps: `/bin/busybox.nosuid free -m`, `/bin/busybox.nosuid df -k /`, then full **read-only** mtd6 dump, off-board upload and SHA verification. No NAND erase/program.
