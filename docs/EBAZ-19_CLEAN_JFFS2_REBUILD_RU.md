@@ -206,3 +206,15 @@ Actual board UART run from RAM-rescue v7:
 - Board's `/bin/busybox.nosuid sha256sum /tmp/ebaz19-tftp-test.uInitrd` produced **the same digest**, confirming end-to-end file integrity for the TFTP GET transfer.
 - `cat /proc/mounts`: `rootfs / rootfs rw,size=116616k,nr_inodes=29154 0 0`, `devtmpfs /dev devtmpfs ...`, proc/sysfs. No root mount from mtd6. The `rootfs` maximum is ~114 MiB; actual available RAM and free rootfs space still need checking before temporarily holding a 64 MiB `mtd6` backup.
 - Next steps: `/bin/busybox.nosuid free -m`, `/bin/busybox.nosuid df -k /`, then full **read-only** mtd6 dump, off-board upload and SHA verification. No NAND erase/program.
+
+## EBAZ-19.22/23 — Full mtd6 read dump and first offboard chunk PASS
+
+RAM-rescue v7 UART hardware results:
+
+- `free -m` before dump: 246 MiB total, ~235 MiB free. BusyBox `df -k /` cannot parse the RAM `rootfs` mount; does not indicate a RAM issue.
+- Read-only full 64 MiB main-data-area NAND dump: `nanddump --bb=padbad -s 0 -l 0x4000000 -f /tmp/EBAZ19_MTD6_BACKUP.bin /dev/mtd6`. Exit 0; output exactly 67108864 bytes. nanddump reported ECC failed=0, ECC corrected=0, bad blocks=0, BBT blocks=0 (for this partition/read). This is **not** an OOB-preserving full-chip backup.
+- Full mtd6 data dump SHA-256 on board: `05bf4e25cf31d0fcfe9a3cd591d5d43fb5505e6f4a0022d665d7a130f5137f8a`.
+- After full dump: `free -m` 171 MiB free, image remains in volatile RAM until exported.
+- First 8 MiB chunk `/tmp/mtd6_part00.bin` uploaded by BusyBox TFTP PUT to CHUWI `192.168.1.79` (temporarily writing permitted by Tftpd32); exit 0 and size 8388608 bytes.
+- First chunk SHA-256 measured on board and CHUWI, **match**: `acb2c04fa554dd18a7ceb70fbec9d4074feb965281fab0c1fe1f66f0bc7a6132`.
+- Remaining parts 01..07 and complete offboard SHA comparison **not yet evidenced**. Must assemble binary-safely and check exact length + full SHA before marking external backup verified. Afterwards restore TFTP read-only and relocate backup outside TFTP share. Preserve private backups; never publish images or private keys to GitHub. Still no NAND erase/write.
