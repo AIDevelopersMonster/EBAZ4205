@@ -231,3 +231,13 @@ RAM-rescue v7 UART hardware results:
 - Main NAND region mtd6 had previously passed full 64 MiB readback SHA-256 verification and read-only JFFS2 mount test. Independent RAM-rescue and offboard backup retained.
 
 Next: inspect `ifconfig eth0`, `route -n`, running udhcpc and Dropbear, and pid file on the booted OS; remedy any DHCP race before marking end-to-end success.
+
+## EBAZ-19.39: post-boot Ethernet and Dropbear status PASS
+
+- After clean JFFS2 autonomous boot, `ifconfig eth0` shows `UP RUNNING`, IPv4 `192.168.1.77/24`, MAC `00:0A:35:00:01:22`.
+- `route -n` shows default gateway `192.168.1.254` through eth0 and local route `192.168.1.0/24`.
+- Process list confirms `udhcpc -R -b -p /var/run/udhcpc.eth0.pid -i eth0` and Dropbear daemon on port 22 with `-s -j -k`.
+- No running process matching `cgminer|bmminer|dwang` in the checked `ps` output. This is a runtime process check only, not a complete security audit.
+- Initial DHCP `No lease` during early boot resolved without manual intervention: eth0 has correct address post-boot.
+- SSH public-key login from CHUWI is the final pending network check; do not mark end-to-end SSH PASS until observed.
+- All checks are read-only; no additional NAND changes needed.
