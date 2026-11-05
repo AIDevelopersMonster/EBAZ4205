@@ -163,3 +163,16 @@ Status: offline-built only; no board connection, no NAND writes.
 - U-Boot environment: `kernel_load_address=0x2080000`, `kernel_size=0x500000`, `devicetree_load_address=0x2000000`, `devicetree_size=0x20000`, `ramdisk_load_address=0x4000000`. Existing `nandboot` loads FPGA image before kernel+DT then executes bootm *without* initrd; it must not be called unchanged for rescue.
 - `tftpboot 0x04000000 ebaz19-rescue-v7.uInitrd`: success, `Bytes transferred = 1419121 (15a771 hex)`.
 - Next mandatory check `iminfo 0x04000000`, then **read-only NAND** loading existing FPGA bitstream, kernel and device tree at documented RAM addresses, temporary `bootargs` with initramfs `/init` (remove `noinitrd`; no `root=/dev/mtdblock6`). Confirm new root is RAM via UART. No NAND writes, no `saveenv`.
+
+## EBAZ-19.17 — RAM-rescue v7 boot on real board PASS (2026-11-05)
+
+**First hardware boot of independent rescue succeeded.** UART log confirms:
+
+- U-Boot `iminfo 0x02080000`: `Linux-4.6.0-xilinx` legacy ARM kernel image, data size 3820688 bytes, checksum OK.
+- `bootargs` in the running kernel: `console=ttyPS0,115200 rdinit=/init`, without `root=/dev/mtdblock6` and `noinitrd`.
+- `bootm 0x02080000 0x04000000 0x02000000` verified kernel and `EBAZ19 RAM-RESCUE v7` initramfs checksums, relocated ramdisk to `0x0f1aa000`–`0x0f304731`, FDT to `0x0f1a4000`–`0x0f1a9b90`, and started the existing Linux 4.6 kernel.
+- Kernel reported `Trying to unpack rootfs image as initramfs...`, then executed `/init`. Banner: `EBAZ-19 RAM-RESCUE v7: running in RAM (NOT mtd6)` and UART prompt `/ #`.
+- NAND partitions `mtd0` to `mtd8` detected. Existing BBT was found. Four listed bad blocks at offsets `0x07f60000`, `0x07f80000`, `0x07fa0000`, `0x07fc0000` are *outside* `mtd6` (`0x02a20000`–`0x06a20000`); this is **not** a complete NAND health assessment and no BBT changes were made.
+- **PASS meaning:** independent RAM rescue boot and UART shell actually operate. **Not yet established:** rescue MTD read/write access, reliable transport of original image, rollback under failure, boot with clean JFFS2 from NAND.
+
+**Next safe phase:** while at `/ #`, verify `/proc/cmdline`, root mount, `/dev/mtd6` and tool paths, optionally perform a *read-only* 2048-byte `nanddump` into RAM. No erase, nandwrite, or saveenv. Retain original NAND backups; do not write to `mtd6` until restoration procedure can be validated and user confirms the destructive phase.
