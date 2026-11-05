@@ -94,3 +94,9 @@
 - FF-padded candidate `EBAZ4205-rootfs-clean-64MiB-FIXED-DO_NOT_FLASH.img` has exactly 67,108,864 bytes. SHA256 `7b5cbb6cb423a0bac824247baa4e9e74ea6dc5179e292593b0de7c0021326c85`.
 - `JFFS2_CRC_PASS`: 7,171 nodes; 6,293 raw inode nodes; 878 dirents; zero CRC or structure errors. Compression: NONE=1663, RTIME=1, ZLIB=4629, no LZO.
 - Next EBAZ-19 v6: independent read-only comparison of JFFS2 contents, metadata, and symlinks against staging TAR. No NAND writes until rescue+rollback validation.
+
+## EBAZ-19 v6.1 — корневой inode 1 JFFS2
+
+- Первый прогон независимого сравнения v6: `EBAZ19_V6_ROUNDTRIP_FAIL: missing metadata for JFFS2 paths: {1}`. Это ограничение **валидатора**, не новое сообщение CRC NAND.
+- JFFS2 использует специальный корневой inode 1; `mkfs.jffs2` может не писать для него отдельный raw_inode. В v6.1 допускается отсутствие метаданных **только** для root inode 1, остальные inode обязаны иметь их. Метаданные UID/GID/mode/mtime самого root тогда **не подтверждены** и выделяются в отчёте.
+- Исправление проверено на синтетических тестах с явным/неявным root, намеренно отсутствующим обычным inode и ошибками данных. Реальный JFFS2 ещё предстоит перепроверить. Файлы NAND/TAR/образ не менялись, прошивка запрещена до независимого rescue и rollback.
