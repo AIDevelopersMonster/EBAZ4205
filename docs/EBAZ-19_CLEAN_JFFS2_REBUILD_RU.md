@@ -188,3 +188,14 @@ On the actual EBAZ4205 board, in the independent RAM-rescue v7 at UART prompt `/
 - `grep` is not present in the minimal rescue; use `cat /proc/mounts` without piping to grep. The missing utility is not a kernel failure.
 
 **Status:** independent rescue boot + read-only MTD6 access confirmed. This test covers only one NAND page, **not** whole-partition read integrity or recoverability. Next check the rescue Ethernet link and TFTP GET for an existing file into RAM, to establish a transport path for an eventual rollback image. No `nandwrite`, `flash_erase`, `saveenv` or NAND writes authorized.
+
+## EBAZ-19.19 — Rescue Linux TFTP GET PASS
+
+Actual board UART run from RAM-rescue v7:
+
+- `/bin/busybox.nosuid ifconfig -a` showed `eth0` with MAC `00:0A:35:00:01:22`. Rescue busybox is present as `/bin/busybox.nosuid` and `/bin/busybox.suid`; no `busybox` symlink exists. Its applets include `ifconfig`, `tftp`, `grep`, and `sha256sum`.
+- After assigning `eth0` address `192.168.1.77/24`, `/bin/busybox.nosuid tftp -g -r ebaz19-rescue-v7.uInitrd -l /tmp/ebaz19-tftp-test.uInitrd 192.168.1.79` returned exit code 0.
+- Retrieved 1,419,121 bytes to RAM; SHA-256 measured on device: `e78b94be65e281550c8109ad888a7194471bcf7ffdc987c55009aee0bc4dc73e`. Must separately compare this digest with the CHUWI/WSL source before labelling end-to-end hash verification PASS.
+- Safe next phase: verify source digest, check RAM free space, make a read-only **full mtd6** NAND backup through RAM-rescue, transfer it back to CHUWI (TFTP upload requires an intentionally configured temporary server-side write permission) and compare hash. Preserve backups and test rollback strategy before any NAND erase/program.
+
+**No NAND modifications made.**
