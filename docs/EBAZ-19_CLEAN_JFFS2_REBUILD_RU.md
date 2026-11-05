@@ -155,3 +155,11 @@ Status: offline-built only; no board connection, no NAND writes.
 - `EBAZ19_RESCUE_V7_BUILD_PASS`.
 - Local path (CHUWI WSL2): `/home/alex/EBAZ4205_EBAZ19/rescue-v7`.
 - Pending: verify mkimage header, inspect actual U-Boot 2015.07 environment and its loading commands from UART, load rescue using verified RAM addresses, confirm standalone shell and MTD read-only access, then validate recoverability before even considering writing mtd6. Do not use `saveenv`.
+
+## EBAZ-19.15 — TFTP transfer of RAM rescue confirmed (2026-11-05)
+
+- CHUWI TFTP32 serves read-only from `C:\Users\CHUWI\EBAZ4205_TFTP`, bound to `192.168.1.79` (Ethernet).
+- UART U-Boot `ping 192.168.1.254` and `ping 192.168.1.79`: success after Windows inbound ICMP rule for `192.168.1.77`.
+- U-Boot environment: `kernel_load_address=0x2080000`, `kernel_size=0x500000`, `devicetree_load_address=0x2000000`, `devicetree_size=0x20000`, `ramdisk_load_address=0x4000000`. Existing `nandboot` loads FPGA image before kernel+DT then executes bootm *without* initrd; it must not be called unchanged for rescue.
+- `tftpboot 0x04000000 ebaz19-rescue-v7.uInitrd`: success, `Bytes transferred = 1419121 (15a771 hex)`.
+- Next mandatory check `iminfo 0x04000000`, then **read-only NAND** loading existing FPGA bitstream, kernel and device tree at documented RAM addresses, temporary `bootargs` with initramfs `/init` (remove `noinitrd`; no `root=/dev/mtdblock6`). Confirm new root is RAM via UART. No NAND writes, no `saveenv`.
