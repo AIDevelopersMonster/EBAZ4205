@@ -87,3 +87,10 @@
 Причина: в сборочном скрипте ошибочно указано `-p 0x4000000`. Опция `-p` имеет **необязательное** значение: если размер передан отдельным аргументом, он не связывается с `-p`, и утилита заполняет лишь конечный eraseblock. Корректный синтаксис: `--pad=0x4000000` (или `-p0x4000000`). Исправление не касается геометрии NAND, образа-источника или настроек Ethernet/SSH.
 
 **Безопасное восстановление текущей сборки:** взять созданный `EBAZ4205-rootfs-clean-UNPADDED.jffs2` и добавить исключительно байты `FF` до 67108864 байт в **новый** файл `EBAZ4205-rootfs-clean-64MiB-FIXED-DO_NOT_FLASH.img` (в каталоге `build-v5`), после чего проверить структуры и CRC обоих образов скриптом `04_verify_jffs2.py` и записать SHA-256. Нельзя использовать `truncate -s`, поскольку он дополняет нулями, а не `FF`. Операцию выполнять только на WSL ext4, не трогать NAND. До independent rescue/rollback прошивка ЗАПРЕЩЕНА.
+
+## EBAZ-19.6 — FF padding and CRC verification PASS (2026-11-05)
+
+- `rootfs_firmware_candidate_v5.tar`: 879 records, SHA256 `a257ba577722b8b8b808cfa3a76152895a1b2967df0325d686a0c9a277204785`.
+- FF-padded candidate `EBAZ4205-rootfs-clean-64MiB-FIXED-DO_NOT_FLASH.img` has exactly 67,108,864 bytes. SHA256 `7b5cbb6cb423a0bac824247baa4e9e74ea6dc5179e292593b0de7c0021326c85`.
+- `JFFS2_CRC_PASS`: 7,171 nodes; 6,293 raw inode nodes; 878 dirents; zero CRC or structure errors. Compression: NONE=1663, RTIME=1, ZLIB=4629, no LZO.
+- Next EBAZ-19 v6: independent read-only comparison of JFFS2 contents, metadata, and symlinks against staging TAR. No NAND writes until rescue+rollback validation.
