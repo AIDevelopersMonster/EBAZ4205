@@ -209,3 +209,48 @@ New console data (2026-11-07):
 **Proposed change gate:** inspect exact S65 link and the SysV rcS runner, then rename only `/etc/rcS.d/S65inetd.busybox` to a hidden disabled sibling, without killing the running inetd, deleting packages or modifying network scripts. Retain an exact reverse command. This is a **proposal** until the user performs it and validates a full subsequent boot. Because /etc is in JFFS2, rename is a persistent NAND write: only after recovery readiness and UART access are confirmed. Do not combine changes to three services in one experiment. After inetd regression PASS, repeat for the confirmed no-op tcf-agent and modutils links.
 
 Check 6010 separately via read-only inspection of `/proc/net/tcp` and `/proc/PID/fd` if needed, or from a client use SSH with X11 forwarding explicitly disabled. `-s -j -k` indicates password auth and two TCP forwarding modes disabled, not necessarily all X11 functionality. No server config change in this step.
+
+## EBAZ-20.24 — Full UART reboot log: boot PASS, optimization validation pending
+
+**Source:** complete UART session log provided by the user after invoking `reboot`. The preceding actual `mv` command and post-boot inetd process listing were not included; thus *inetd-disabled PASS cannot yet be claimed*.
+
+### Confirmed reboot sequence
+
+- Clean shutdown attempted: Dropbear, syslog/klogd and networking stopped; JFFS2 emitted `jffs2_sum_write_data: Not enough space for summary, padsize = -581` before reset. The warning requires monitoring but does not establish flash corruption; shutdown continued.
+- U-Boot 2015.07 recognizes 256 MiB DRAM and 128 MiB NAND, reads bitstream from NAND offset `0x2220000` (3 MiB), kernel from `0x300000` (5 MiB) and device tree from `0x800000` (128 KiB). Bitstream header: `top_ctrl`, `7z010clg400`, payload 2,083,740 bytes. Kernel legacy-image checksum passed.
+- U-Boot printed `Invalid bus 0 (err=-1)` and `spi_flash_probe() failed, using default environment`. NAND-based kernel loading succeeded. Treat U-Boot environment storage/origin as OPEN; do not use `saveenv`.
+- Linux 4.6.0-xilinx `#5 SMP PREEMPT`, activated both cores (`Brought up 2 CPUs`, 1333.33 BogoMIPS total), initialized L2C-310 512KiB 8-way, global timer clocksource (333 MHz sched_clock reference, NOT a verified CPU frequency), enabled devtmpfs.
+- Root parameter `root=/dev/mtdblock6 rootfstype=jffs2`, `VFS: Mounted root (jffs2 filesystem) on device 31:6`. `mtd6` is the 64-MiB `nand-allrootfs` partition (`0x02a20000..0x06a20000`); do not confuse with the separately named `nand-rootfs` mtd3.
+- SysVinit 2.88 entered runlevel 5, started Dropbear and syslog/klogd; UART displayed `zedboard-zynq7 login:`. This is **NAND_BOOT_TO_LOGIN_PASS**. Post-boot SSH connection and IP assignment not evidenced in this log.
+- Device Tree kernel logs show PL UARTLite ttyUL2, PS UARTs ttyPS0/ttyPS1, ARM GIC/DMA, NAND and GEM Ethernet; hardware discovery is not a justification for removing built-in kernel drivers.
+
+### Warnings / follow-up
+
+1. **Ethernet race persists:** `udhcpc` sent three discovers then `No lease, forking to background`. PHY twice reported `link up (100/Full)` and `unable to generate target frequency: 25000000 Hz`. Clock/PHY status and final DHCP lease must be checked read-only before editing network timing.
+2. **RTC/time:** `rtc-pcf8563 0-0051 ... probe failed with error -5`, then `hctosys: unable to open rtc device (rtc0)`; boot timestamps show 2010. Investigate device-tree RTC definition and actual board presence before any driver/clock changes. Correct time matters for system logs and security protocols.
+3. **JFFS2:** during shutdown `Not enough space for summary, padsize=-581`, and at boot `Empty flash at 0x00cb8d2c ends at 0x00cb9000`. No root mount failure observed. Preserve backups, inspect free space and recurrence before changing NAND.
+4. **Other nonfatal messages:** `Invalid bus 0` in U-Boot; ALSA `No soundcards found` despite initialized subsystem; I2C RTC probe failed. They are not independently proof of bad hardware.
+5. **Kernel services** include USB, V4L, SCSI, CAN, RTC, DMA, Xilinx PS/PL drivers built into the 2017 kernel image. These are future kernel config audit candidates, not SysV modules to disable now.
+
+### Post-reboot acceptance commands (board UART; read-only)
+
+~~~sh
+echo '=== BOOT ==='
+cat /proc/cmdline
+echo '=== INETD STARTUP LINK ==='
+ls -l /etc/rcS.d/*inetd*
+echo '=== INETD RUNTIME ==='
+pidof inetd || echo INETD_NOT_RUNNING
+echo '=== ETHERNET ==='
+ifconfig eth0
+route -n
+cat /sys/class/net/eth0/carrier
+echo '=== DHCP AND SSH ==='
+pidof udhcpc
+pidof dropbear
+netstat -lnt
+echo '=== CLOCK ==='
+date -u
+~~~
+
+**Acceptance criteria:** link disabled exactly as intended, no inetd process after reboot, UART console functional, Ethernet DHCP lease present, SSH key login separately proven, same JFFS2 root. First do not change tcf/modutils or other init scripts in the same cycle.
