@@ -171,3 +171,15 @@ Next read-only command set on board: `cat /etc/init.d/mdev`, `ls -l /etc/default
 Важное ограничение: наличие повторного монтирования само по себе не доказывает неисправность; mdev обеспечивает создание узлов устройств и hotplug. **Не** убирать S04mdev, не делать `umount /dev` в работающей системе и не менять NAND без аудита зависимостей и возможности отката. Целевая стратегия: сохранить работающую baseline, исследовать необходимость tmpfs поверх devtmpfs и сохранение работы mdev без повторного mount.
 
 Следующая read-only проверка: текущие `cat /proc/sys/kernel/hotplug`, `/dev` key nodes and mounts, `/sys/devices/system/cpu/{present,online}`, `/proc/interrupts`; затем изучить действительный `modutils.sh`, `inetd.busybox` и `/etc/inetd.conf` до отключения каких-либо служб.
+
+## EBAZ-20.21 — SMP online, GIC interrupts and mdev hotplug
+
+Board read-only inspection on 2026-11-06:
+
+- `/proc/sys/kernel/hotplug` = `/sbin/mdev`, consistent with `/etc/init.d/mdev` configuring the kernel hotplug handler.
+- `/sys/devices/system/cpu/present` = `0-1` and `/sys/devices/system/cpu/online` = `0-1`: both Cortex-A9 processors are present **and online**. `/proc/cpuinfo` shows both as ARMv7, CPU implementer 0x41, part 0xc09, variant 0x3, revision 0, NEON and VFPv3/vfpd32 features. BogoMIPS 666.66 does **not** prove 666 MHz clock speed.
+- `/proc/interrupts` has CPU0/CPU1 columns. TWD local timer IRQ18 counters: CPU0=1,233,119; CPU1=7,333,859. IPI2 (rescheduling) CPU0=859,373; CPU1=1,134,056. Ethernet eth0 IRQ148 CPU0=1,442,723, CPU1=0. UART IRQ145 CPU0=356, CPU1=0; MMC0 IRQ149 CPU0=52, CPU1=0. Err=0. Counters are accumulated since boot, not CPU utilization or rate measurements; device IRQ distribution may reflect IRQ affinity, and zero counts for a driver don't prove it is unnecessary.
+- Device nodes present in the mdev-mounted /dev: `/dev/console` c5,1, `/dev/mem` c1,1, `/dev/mtd6` c90,12, `/dev/mtdblock6` b31,6, `/dev/null` c1,3, `/dev/ptmx` c5,2, `/dev/ttyPS0` c247,0, and `/dev/pts/{0,1}`. Active mdev is therefore functional. **Do not unmount /dev or disable mdev in a live SSH session.**
+- Additional security check needed: `mdev` init script previously applied chmod 777 to `/dev/shm` rather than 1777; inspect effective mode and mount before interpreting this as a problem. Don't change it yet.
+
+Next read-only gate: inspect actual CPU frequency availability, current IRQ affinity / CPU utilization counters and optional SysV services (inetd, tcf-agent, module loader), distinguishing candidates from required kernel infrastructure. No services stopped or NAND/bitstream modified.
