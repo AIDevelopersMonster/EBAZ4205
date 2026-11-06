@@ -269,3 +269,34 @@ Real-board post-reboot output (2026-11-07, user supplied):
 **Change verdict:** one deliberately isolated SysV change (rename inetd startup symlink) passed the post-reboot functional checks; other startup items remain untouched. Do not disable tcf-agent/modutils or modify mdev in the same cycle; future isolated changes can follow this measured baseline. The DHCP boot ordering/race and kernel message about target 25MHz Ethernet frequency remain OPEN despite eventual successful address assignment.
 
 **Next read-only gate:** `ls -l /dev/rtc* /sys/class/rtc`, `cat /proc/driver/rtc`, `ls -l /sys/bus/i2c/devices/0-0051`, `dmesg | grep -i -E 'rtc|pcf8563|hctosys|clock|eth0'` and `date -u`. Avoid i2c writes/scans until hardware is identified. After that decide whether to time-sync externally and then audit boot timestamps, or to fix the Device Tree RTC node in a separately reversible firmware revision.
+
+## EBAZ-20.26 — RTC PCF8563: device-tree node exists, hardware probe FAILED
+
+Read-only console evidence (reported 2026-11-07):
+
+- `/dev/rtc*`: no device. `/sys/class/rtc/`: empty. `/proc/driver/rtc`: absent. No registered Linux RTC is available at this moment.
+- `/sys/bus/i2c/devices/0-0051/` exists and contains `name`, `modalias`, `of_node` linking to `/firmware/devicetree/base/amba/i2c@e0004000/rtc@51`, but **does not show a successfully bound RTC driver**. A Device Tree client instance is not proof of physically fitted PCF8563.
+- Kernel logs: `rtc-pcf8563 0-0051: chip found, driver version 0.4.4`; `pcf8563_write_block_data: err=-11 addr=0e, data=03`; `pcf8563_probe: write error`; `probe of 0-0051 failed with error -5`; `hctosys: unable to open rtc device (rtc0)`.
+- Actual `date -u`: `Fri Jul 23 14:20:50 UTC 2010`. No valid boot-time hardware or network time synchronization has been proven.
+- Relevant public old Linux RTC driver sources place the `chip found` log before the register write and before `rtc_device_register`, so the message does not authenticate a physical chip. Address `0x0E` is the PCF8563 timer-control register and `0x03` is its low-frequency selection value; the bus write failed. `-11` corresponds to EAGAIN and final probe `-5` to EIO; do not infer a specific electric/bus fault from these numeric returns alone.
+
+Working hypotheses: carried-over Zedboard RTC node not realized on EBAZ4205, absent/unpowered physical RTC, I2C bus/transmission/configuration problem. **Not yet differentiated.** Source references for driver semantics: `https://cos.googlesource.com/third_party/kernel/+/14f09e2f9b85076133b795a2d2615f635482de1b/drivers/rtc/rtc-pcf8563.c`; PCF8563 datasheet: `https://www.nxp.com/products/PCF8563`.
+
+Engineering decision: keep existing NAND, kernel, device tree, I2C and RTC unchanged during diagnosis. Obtain sysfs name/modalias/compatible and adapter details read-only; inspect NTP client availability and network path; establish accurate system time over network before redesigning RTC support. `i2cdetect`, `i2cset`, raw `/dev/i2c-*` access and driver bind/unbind are excluded from this stage.
+
+Suggested read-only capture:
+
+~~~sh
+echo '=== I2C CLIENT ==='
+cat /sys/bus/i2c/devices/0-0051/name
+cat /sys/bus/i2c/devices/0-0051/modalias
+ls -l /sys/bus/i2c/devices/0-0051/driver 2>&1
+echo '=== DT RTC COMPATIBLE ==='
+tr '\000' '\n' < /proc/device-tree/amba/i2c@e0004000/rtc@51/compatible
+echo '=== I2C ADAPTER ==='
+cat /sys/class/i2c-adapter/i2c-0/name 2>&1
+echo '=== TIME CLIENT AVAILABILITY ==='
+for a in ntpd ntpdate rdate busybox; do command -v "$a" 2>/dev/null || :; done
+echo '=== CLOCK NOW ==='
+date -u
+~~~
