@@ -87,3 +87,22 @@ In running Linux 4.6.0-xilinx on EBAZ4205, `/sbin/devmem 0x40000000 32` returned
 An `xauth: command not found` line appeared in the SSH session. It is independent of the BRAM read and likely due to optional X11 forwarding; future SSH sessions may use `ssh -x`.
 
 Next low-risk step: read a few more aligned 32-bit words from the established DT mapping at 0x40000004, 0x40000008, 0x4000000C, and 0x40000010, recording exact results; do not modify MMIO, FPGA bitstream, NAND, or boot configuration. Only perform writes after identifying the contents and consumers of this memory and preparing a rollback plan.
+
+## EBAZ-20.8 — Eight consecutive BRAM reads
+
+Eight read-only 32-bit `devmem` accesses of the DT-mapped AXI BRAM address space completed with the following results:
+
+| Offset | Read value |
+|---|---|
+| 0x00 | 0x00000043 |
+| 0x04 | 0x00000001 |
+| 0x08 | 0x00000008 |
+| 0x0C | 0x00000008 |
+| 0x10 | 0x00000008 |
+| 0x14 | 0x00000008 |
+| 0x18 | 0x00000000 |
+| 0x1C | 0x00000000 |
+
+Observed data have apparent structure but no identified schema. 0x43 is ASCII 'C' only as a possible interpretation. A successful Linux read of this location demonstrates accessible 32-bit words but not that all 8192 bytes are backed, writable, or shared with independent PL logic. No MMIO writes were performed.
+
+Next: read the adjacent eight 32-bit words (offsets 0x20..0x3C) and repeat the initial eight word reads after a short interval to see whether the observed values change. Continue with read-only diagnostic commands only.
