@@ -196,3 +196,16 @@ Based on actual board commands (2026-11-07 local project time; received as user 
 - Dropbear, mdev, networking and logging remain critical. No NAND, mount, daemon or kernel configuration changes made.
 
 Next diagnostic gates (read-only): `ls -l /usr/sbin/tcf-agent`, `pidof tcf-agent`, `netstat -lnt`, `netstat -lnu`, `cat /etc/modules`, `ls -la /etc/modules-load.d`, and inspect current effective `inetd` args via `/proc/PID/cmdline` if PID stable. The initial optimization should be a reversible, separately validated SysV startup change to inetd, not deletion of the binary or live stopping of services.
+
+## EBAZ-20.23 — Candidates substantiated by live board inspection
+
+New console data (2026-11-07):
+
+- `/usr/sbin/tcf-agent` is absent (`ls` reports No such file or directory) and `pidof tcf-agent` is empty. Since the existing `/etc/init.d/tcf-agent` checks `test -x /usr/sbin/tcf-agent || exit 0`, its S99 runlevel-5 boot entry is **confirmed no-op**. Safe candidate for reversible removal of its startup symlink, not target script.
+- `/etc/modules` and `/etc/modules-load.d` are absent and `/proc/modules` is empty. Given the real `modutils.sh` guard `[ -f /etc/modules ] || [ -d /etc/modules-load.d ] || exit 0`, the S05 startup step is **confirmed no-op for this filesystem snapshot**. Keep in mind kernel drivers can be built-in.
+- `/etc/inetd.conf` lists **only commented services**; its init script launches `/usr/sbin/inetd` with default config; `pidof inetd` reports 795. `netstat -lnt` shows TCP 22 on IPv4/IPv6 and `127.0.0.1:6010`, `netstat -lnu` shows no listeners. There is no service shown that is attributable to `inetd`. **Best first candidate to disable from boot** while retaining Dropbear and the binary. TCP/6010 is consistent with an SSH X11 forwarding listener, but its owner remains unverified; do not identify it as inetd without evidence.
+- The SSH daemon is independently started by `/etc/rc5.d/S10dropbear`, not by inetd (no `dropbear -i`), so disabling inetd autostart should not be confused with disabling SSH.
+
+**Proposed change gate:** inspect exact S65 link and the SysV rcS runner, then rename only `/etc/rcS.d/S65inetd.busybox` to a hidden disabled sibling, without killing the running inetd, deleting packages or modifying network scripts. Retain an exact reverse command. This is a **proposal** until the user performs it and validates a full subsequent boot. Because /etc is in JFFS2, rename is a persistent NAND write: only after recovery readiness and UART access are confirmed. Do not combine changes to three services in one experiment. After inetd regression PASS, repeat for the confirmed no-op tcf-agent and modutils links.
+
+Check 6010 separately via read-only inspection of `/proc/net/tcp` and `/proc/PID/fd` if needed, or from a client use SSH with X11 forwarding explicitly disabled. `-s -j -k` indicates password auth and two TCP forwarding modes disabled, not necessarily all X11 functionality. No server config change in this step.
