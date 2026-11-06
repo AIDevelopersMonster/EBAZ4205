@@ -106,3 +106,7 @@ Eight read-only 32-bit `devmem` accesses of the DT-mapped AXI BRAM address space
 Observed data have apparent structure but no identified schema. 0x43 is ASCII 'C' only as a possible interpretation. A successful Linux read of this location demonstrates accessible 32-bit words but not that all 8192 bytes are backed, writable, or shared with independent PL logic. No MMIO writes were performed.
 
 Next: read the adjacent eight 32-bit words (offsets 0x20..0x3C) and repeat the initial eight word reads after a short interval to see whether the observed values change. Continue with read-only diagnostic commands only.
+
+## EBAZ-20.9 - Second set of BRAM word reads
+
+The board returned the following additional **read-only** 32-bit words at AXI BRAM base 0x40000000: offset +0x20 = 0x0000003F; +0x24 = 0x0000000E; +0x28 = 0x0000001E; +0x2C = 0x0000001E; +0x30, +0x34, +0x38, +0x3C = 0x00000000. The earlier reads at offsets +0x00 through +0x1C were repeated unchanged, confirming their stability across those two observations. No MMIO writes performed. Meaning and producer of these values remain unknown. Next: inspect available cross-compilation toolchain, implement a read-only mmap-based ARM utility for controlled memory snapshots, and establish a baseline before modifying PL.
