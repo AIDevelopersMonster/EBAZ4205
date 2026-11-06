@@ -27,6 +27,12 @@ Status: UBOOT_UART_CONTROL_PASS
 
 Проверено на реальной плате. Заводская NAND не изменяется; режим диагностический (`init=/bin/sh`, корневая файловая система только для чтения).
 
+## Видео: EBAZ-19 — запуск очищенного Linux из NAND
+
+[▶️ EBAZ4205: пересборка Linux, запись JFFS2 в NAND и успешная автономная загрузка (YouTube Shorts)](https://youtube.com/shorts/_ULPOgmIEM0)
+
+Показан результат EBAZ-19: загрузка Linux с очищенного раздела NAND, восстановленная сеть и доступ по SSH. [Технический журнал EBAZ-19](docs/EBAZ-19_CLEAN_JFFS2_REBUILD_RU.md).
+
 ## Project goals
 
 1. Preserve factory firmware and configuration.
