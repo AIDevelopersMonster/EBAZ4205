@@ -45,3 +45,14 @@ Hardware log confirms the PL UARTLite at 0x42c00000 is a Linux platform device u
 BusyBox netstat -lnt showed only TCP port 22 listening on IPv4 and IPv6. netstat -lnu showed no UDP listening sockets. Process list included inetd, DHCP client, Dropbear, logging, getty, and a key-authenticated SSH session; it showed no recognized running mining process. A listening socket audit does not prove the system is free of vulnerabilities or malware.
 
 Next safe read-only checks: inspect /proc/device-tree/amba_pl and the of_node attributes of the 42c00000.serial device; inspect active inetd configuration. Do not access MMIO registers, FPGA configuration device, or persistent NAND until the register map and rollback requirements are understood.
+
+## EBAZ-20.3 - Device Tree and inetd inspection
+
+- The PL device tree node contains `axi_bram_ctrl@40000000` and `serial@42c00000`.
+- UARTLite compatible value: `xlnx,xps-uartlite-1.00.a`.
+- UARTLite `reg`: base 0x42C00000, mapped range length 0x00010000 according to DT; Linux uartlite driver has a smaller 16-byte register resource in `/proc/iomem`.
+- UARTLite `interrupts` bytes: 00 00 00 00 00 00 00 1d 00 00 00 01 (GIC SPI number 29, flags 1).
+- `/etc/inetd.conf` contains only commented example services, including telnet and ftp. Prior socket audit showed TCP 22 only and no bound UDP listeners. The inetd process is present but currently provides no enabled services from this file.
+- The existence of a BRAM-controller node in DT is not yet evidence of a working accessible BRAM: verify its DT compatible, reg, status and kernel binding before any MMIO experiment.
+
+Next read-only checks: list `/proc/device-tree/amba_pl/axi_bram_ctrl@40000000/`, decode the compatible, reg and status properties, inspect `/sys/devices/soc0/amba_pl`, and check whether `/dev/mem` is available. Do not write NAND or read/write arbitrary MMIO until the BRAM map is known.
