@@ -183,3 +183,16 @@ Board read-only inspection on 2026-11-06:
 - Additional security check needed: `mdev` init script previously applied chmod 777 to `/dev/shm` rather than 1777; inspect effective mode and mount before interpreting this as a problem. Don't change it yet.
 
 Next read-only gate: inspect actual CPU frequency availability, current IRQ affinity / CPU utilization counters and optional SysV services (inetd, tcf-agent, module loader), distinguishing candidates from required kernel infrastructure. No services stopped or NAND/bitstream modified.
+
+## EBAZ-20.22 — inetd, TCF, modutils and CPU frequency
+
+Based on actual board commands (2026-11-07 local project time; received as user console output):
+
+- `cpu0/cpufreq/*freq` scan displayed no readable files. Thus cpufreq sysfs did not provide frequency in this run; no conclusion on actual clock or governor is justified.
+- `/proc/stat` showed CPU0 and CPU1 accumulating both user and system time (CPU0 user 151432 system 93784 idle 7942829; CPU1 user 109854 system 91360 idle 7987232). Both cores are executing work; these are cumulative counters, not a contemporaneous load percentage.
+- `/etc/inetd.conf`: all possible `echo`, `chargen`, `discard`, `daytime`, `time`, `telnet`, `ftp` entries are commented. `/etc/init.d/inetd.busybox` starts `/usr/sbin/inetd` without explicit alternate config path. The previous `ps` showed running inetd. Candidate for reversible removal from SysV boot after confirming no live sockets/alternate config. Not yet disabled.
+- `/etc/init.d/tcf-agent`: when executable `/usr/sbin/tcf-agent` exists, invokes `tcf-agent -d -L- -l0` from `start` under runlevel 5. Initial `ps` had no unambiguous tcf-agent process; determine existence and current status before classification. Remote debug agent should not remain enabled without a development purpose; candidate only, not yet disabled.
+- `/etc/init.d/modutils.sh`: conditionally loads `/etc/modules` and `/etc/modules-load.d/*.conf`, using `modprobe` or `insmod`, and may run depmod if modules.dep is absent. Earlier `/proc/modules` was empty; that alone does not establish unnecessary module loading setup. Must inspect actual module lists and built-in drivers before removal.
+- Dropbear, mdev, networking and logging remain critical. No NAND, mount, daemon or kernel configuration changes made.
+
+Next diagnostic gates (read-only): `ls -l /usr/sbin/tcf-agent`, `pidof tcf-agent`, `netstat -lnt`, `netstat -lnu`, `cat /etc/modules`, `ls -la /etc/modules-load.d`, and inspect current effective `inetd` args via `/proc/PID/cmdline` if PID stable. The initial optimization should be a reversible, separately validated SysV startup change to inetd, not deletion of the binary or live stopping of services.
