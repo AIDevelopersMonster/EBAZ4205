@@ -137,3 +137,15 @@ done
 Получены `/proc/cmdline`, `/etc/inittab`, полный перечень ссылок `/etc/rcS.d` (17) и `/etc/rc5.d` (8), а также список процессов. Linux загружается с JFFS2 mtd6 в runlevel 5. Присутствуют inetd, udhcpc, dropbear, syslogd, klogd, UART getty и getty tty1. Есть потоки ядра для CPU1, включая migration/1 и ksoftirqd/1. Изменений NAND или автозагрузки в ходе диагностики нет.
 
 Ключевые вопросы: текущая командная строка Dropbear отличается от ранее зафиксированной конфигурации ограничений; inetd требует проверки конфигурации; сценарии инициализации PHY и DHCP пока должны оставаться активными; нужно выяснить происхождение дополнительного tmpfs на /dev и необходимость tcf-agent, NFS, второй getty. Для следующего этапа прочитать исходные сценарии и конфигурацию, не отключать службы до установления зависимостей.
+
+## EBAZ-20.18 — Анализ Dropbear, Ethernet и mountall
+
+Пользователь передал действующее содержимое трёх критичных файлов и сценария DHCP.
+
+- `/etc/default/dropbear` содержит `DROPBEAR_EXTRA_ARGS="-s -j -k -r /etc/dropbear/dropbear_ecdsa_host_key"`. Это требуемые ограничения, но **не доказательство фактических флагов запущенного процесса**.
+- `/etc/init.d/dropbear` действительно загружает `/etc/default/dropbear` (`. /etc/default/dropbear` при доступности файла), затем использует `$DROPBEAR_EXTRA_ARGS` при `start` и `restart`; одновременно генерирует/использует RSA host key по умолчанию. В прошлом выводе BusyBox `ps` видны лишь `-r ...rsa... -p 22`; вывод `ps` способен **обрезать аргументы по ширине**, так что наличие или отсутствие `-s -j -k` следует проверять исключительно по `/proc/<pid>/cmdline`.
+- `/etc/rcS.d/S95cgminer.sh`: только `ethtool -s eth0 autoneg on`, `sleep 2`, `exit 0`. Историческое название не означает запуск майнера. Пока сохранять.
+- `/etc/rc5.d/S05eth-autoneg`: при аргументе `start` выполняет `sleep 1`, `ethtool -s eth0 autoneg on`, `sleep 2`, затем отправляет `SIGUSR1` процессу из `/var/run/udhcpc.eth0.pid` при наличии непустого файла. Пока сохранять: это рабочая схема восстановления сети после гонки PHY/DHCP.
+- `/etc/rcS.d/S03mountall.sh`: вызывает `mount -at nonfs,nosmbfs,noncpfs 2>/dev/null` (монтирует подходящие записи `/etc/fstab`), при необходимости пересоздаёт `/dev/initctl`, затем отправляет `SIGUSR1` PID1 и вызывает `swapon -a`. Откуда возникло второе 64-KiB tmpfs-монтирование на `/dev`, пока не установлено: необходимо читать `/etc/fstab` и `/etc/init.d/populate-volatile.sh`.
+
+Контроль: **никаких правок текущей NAND**, не перезапускать Dropbear и не удалять сетевые сценарии, пока не получена карта зависимостей. Следующий read-only блок: 1) полные аргументы процессов Dropbear из procfs; 2) `/etc/fstab`; 3) `/etc/init.d/populate-volatile.sh`.
