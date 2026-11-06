@@ -73,3 +73,9 @@ The real board DT BRAM-controller properties decode as follows: `xlnx,memory-dep
 Xilinx PG078 AXI BRAM Controller v4.0 (2016) and v4.1 (2019), table of BRAM addressing configurations, show that 2,048 x 32-bit words require 11 BRAM address bits and represent 8 KiB. This agrees with the Device Tree window of 0x2000 bytes at physical 0x40000000, but the actual external BRAM generator, data access and clocking have not yet been tested. `EXTERNAL` means BRAM instantiation outside the controller IP, not off-chip DRAM. `single-port-bram=1` means the controller uses one BRAM port for both reading and writing; it does not establish independent FPGA-side access to that memory.
 
 Reference: https://docs.amd.com/v/u/en-US/pg078-axi-bram-ctrl . Next phase: read-only inspection of device sysfs, PL configuration and devmem utility availability, followed by one controlled 32-bit read only if bus responsiveness can be tested safely. No NAND, bitstream or MMIO writes.
+
+## EBAZ-20.6 — Проверка готовности к чтению BRAM
+
+Подтверждено в Linux: `40000000.axi_bram_ctrl` есть в `/sys/devices/soc0/amba_pl/`, но ссылка `driver` отсутствует. `/proc/iomem` не содержит диапазона 0x40000000, что совместимо с отсутствием привязанного драйвера; работоспособность BRAM этим не проверена. Доступна `/sbin/devmem` (апплет BusyBox). Интерфейс `/dev/xdevcfg` существует. `dmesg` показывает регистрацию UARTLite при 0x42c00000 и не содержит сообщений о BRAM. Устройство остается под управлением исходного bitstream, который ранее успешно загрузил U-Boot.
+
+Следующее испытание: однократное **только чтение** 32-битного слова 0x40000000 через `/sbin/devmem`, желательно при подключенном UART; учитывать риск аппаратного зависания/ошибки шины в случае отсутствующего AXI slave. Не выполнять никаких MMIO записей, перепрограммирования PL или NAND. Значение, прочитанное один раз, доказывает лишь отклик адреса, а не полноценный двусторонний обмен PS/PL.
