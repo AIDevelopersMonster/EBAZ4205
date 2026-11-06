@@ -110,3 +110,10 @@ Next: read the adjacent eight 32-bit words (offsets 0x20..0x3C) and repeat the i
 ## EBAZ-20.9 - Second set of BRAM word reads
 
 The board returned the following additional **read-only** 32-bit words at AXI BRAM base 0x40000000: offset +0x20 = 0x0000003F; +0x24 = 0x0000000E; +0x28 = 0x0000001E; +0x2C = 0x0000001E; +0x30, +0x34, +0x38, +0x3C = 0x00000000. The earlier reads at offsets +0x00 through +0x1C were repeated unchanged, confirming their stability across those two observations. No MMIO writes performed. Meaning and producer of these values remain unknown. Next: inspect available cross-compilation toolchain, implement a read-only mmap-based ARM utility for controlled memory snapshots, and establish a baseline before modifying PL.
+
+## EBAZ-20.10 — WSL2 cross-toolchain check
+
+- CHUWI WSL2 (`alex@DESKTOP-R6ITICD`) has `/usr/bin/make` and `/usr/bin/git`.
+- Neither `arm-linux-gnueabihf-gcc` nor `arm-linux-gnueabi-gcc` is installed. `dpkg -l 'gcc-arm-linux*'` returns no installed packages.
+- Proposed WSL-only setup: install Ubuntu package `gcc-arm-linux-gnueabihf` plus ARMHF cross libc development files; compile a tiny fully statically linked ARMv7 binary first. A static test avoids requiring the old PetaLinux 2016.4 userspace to provide newer glibc symbols.
+- On-board filesystem, NAND, FPGA bitstream and access credentials must not be altered in this toolchain setup step.
