@@ -129,3 +129,33 @@ User cloned repository to `~/EBAZ4205` on WSL2, changed to `software/ebaz20-bram
 ## EBAZ-20.13 — ARM help smoke test exits zero
 
 Following correction of the original SSH file transfer (the first ELF was truncated at 65,536 bytes in a 64-KiB /dev tmpfs), the user reports `EBAZ20_HELP_EXIT=0` from the board shell. Assuming that status was captured immediately after `/dev/ebaz20-ram/ebaz20-bram-reader --help`, the static ARM Cortex-A9 application's non-MMIO help path now runs successfully. The full SHA-256 of the newly transferred file was not included in the latest reported output, and `--words 16` is **not yet tested**. Next gate: verify the on-board ELF SHA-256 equals WSL2 original `e05b7cd4afd711ae6c3802c74037baa93422c7b082062c7c185205c563c5ae31`, then run limited read-only `--words 16` with UART available, record values and exit code.
+
+
+## EBAZ-20.14 — ARM BRAM reader hardware execution PASS (2026-11-06)
+
+On EBAZ4205 (`root@zedboard-zynq7`) the statically built, custom ARM Linux program `/dev/ebaz20-ram/ebaz20-bram-reader --words 16` completed successfully. It printed `EBAZ20_BRAM_READ_BEGIN base=0x40000000 words=16`, then 16 32-bit readings identical to previous independent BusyBox `devmem` results, and `EBAZ20_BRAM_READ_PASS`. Shell returned `EBAZ20_BRAM_READER_EXIT=0`.
+
+| Offset | Value |
+|---|---|
+| 0x00 | 0x00000043 |
+| 0x04 | 0x00000001 |
+| 0x08 | 0x00000008 |
+| 0x0C | 0x00000008 |
+| 0x10 | 0x00000008 |
+| 0x14 | 0x00000008 |
+| 0x18 | 0x00000000 |
+| 0x1C | 0x00000000 |
+| 0x20 | 0x0000003F |
+| 0x24 | 0x0000000E |
+| 0x28 | 0x0000001E |
+| 0x2C | 0x0000001E |
+| 0x30 | 0x00000000 |
+| 0x34 | 0x00000000 |
+| 0x38 | 0x00000000 |
+| 0x3C | 0x00000000 |
+
+**Hardware verdict:** `EBAZ20_ARM_BRAM_READER_HARDWARE_PASS` for read-only ARM Cortex-A9 Linux userspace `/dev/mem` → `mmap()` → AXI-accessible address window `0x40000000–0x4000003F`. No MMIO writes, bitstream changes or NAND writes were performed in this application test.
+
+**Limitations:** This test does not establish 8-KiB full coverage, whether the read data are changing under PL control, or independent two-way ARM↔PL synchronization. The user omitted the ELF SHA-256 output in the final test report, so target checksum equality with the WSL original `e05b7cd4afd711ae6c3802c74037baa93422c7b082062c7c185205c563c5ae31` remains to be explicitly documented. The earlier transfer was truncated at 64KiB due to the active `/dev` tmpfs; the subsequent execution used the separate 8MiB RAM-backed filesystem.
+
+Next cautious test: verify actual target SHA-256; then expand read-only sample to 32 words (`--words 32`, 0x80 bytes) to validate adjacent addresses. Do not write any BRAM or reflash NAND.
