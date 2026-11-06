@@ -65,3 +65,11 @@ Next read-only checks: list `/proc/device-tree/amba_pl/axi_bram_ctrl@40000000/`,
 - DT `status` property absent: per Devicetree Specification, equivalent to `okay`. Linux created the platform device `/sys/devices/soc0/amba_pl/40000000.axi_bram_ctrl`.
 - `/dev/mem` exists, permissions `crw-r----- root kmem`, but no direct access has been attempted and no BRAM hardware read/write is confirmed.
 - Next check is **read-only DT parameters and driver binding**. Do not touch raw MMIO or change the bitstream yet.
+
+## EBAZ-20.5 - BRAM configuration decoded
+
+The real board DT BRAM-controller properties decode as follows: `xlnx,memory-depth=2048`, `xlnx,bram-addr-width=11`, `xlnx,ecc=0`, `xlnx,single-port-bram=1`, `xlnx,s-axi-ctrl-data-width=32`, and `xlnx,bram-inst-mode=EXTERNAL`. The device has no `/sys/devices/soc0/amba_pl/40000000.axi_bram_ctrl/driver` symlink, i.e. no kernel driver currently bound. A final `ls -la` command was shown without its output.
+
+Xilinx PG078 AXI BRAM Controller v4.0 (2016) and v4.1 (2019), table of BRAM addressing configurations, show that 2,048 x 32-bit words require 11 BRAM address bits and represent 8 KiB. This agrees with the Device Tree window of 0x2000 bytes at physical 0x40000000, but the actual external BRAM generator, data access and clocking have not yet been tested. `EXTERNAL` means BRAM instantiation outside the controller IP, not off-chip DRAM. `single-port-bram=1` means the controller uses one BRAM port for both reading and writing; it does not establish independent FPGA-side access to that memory.
+
+Reference: https://docs.amd.com/v/u/en-US/pg078-axi-bram-ctrl . Next phase: read-only inspection of device sysfs, PL configuration and devmem utility availability, followed by one controlled 32-bit read only if bus responsiveness can be tested safely. No NAND, bitstream or MMIO writes.
