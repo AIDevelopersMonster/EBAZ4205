@@ -159,3 +159,19 @@ On EBAZ4205 (`root@zedboard-zynq7`) the statically built, custom ARM Linux progr
 **Limitations:** This test does not establish 8-KiB full coverage, whether the read data are changing under PL control, or independent two-way ARM↔PL synchronization. The user omitted the ELF SHA-256 output in the final test report, so target checksum equality with the WSL original `e05b7cd4afd711ae6c3802c74037baa93422c7b082062c7c185205c563c5ae31` remains to be explicitly documented. The earlier transfer was truncated at 64KiB due to the active `/dev` tmpfs; the subsequent execution used the separate 8MiB RAM-backed filesystem.
 
 Next cautious test: verify actual target SHA-256; then expand read-only sample to 32 words (`--words 32`, 0x80 bytes) to validate adjacent addresses. Do not write any BRAM or reflash NAND.
+
+## EBAZ-20.15 — 128-byte AXI BRAM read confirmed
+
+The user ran the custom Cortex-A9 application on EBAZ4205:
+
+```text
+/dev/ebaz20-ram/ebaz20-bram-reader --words 32
+EBAZ20_BRAM_READ_BEGIN base=0x40000000 words=32
+[32 address/value lines]
+EBAZ20_BRAM_READ_PASS
+EBAZ20_READ32_EXIT=0
+```
+
+Offsets 0x00–0x3C match the earlier independently verified 16-word baseline exactly: 0x43, 0x01, 0x08, 0x08, 0x08, 0x08, 0, 0, 0x3F, 0x0E, 0x1E, 0x1E, 0, 0, 0, 0. **Offsets 0x40–0x7C (16 additional words) are all 0x00000000.** A 128-byte read-only mmap-based hardware test has completed with exit code 0. No evidence yet that zero-valued BRAM is unused, that the complete 8 KiB is physically backed, or that PL can read/write independently. No writes were performed to BRAM, NAND, or FPGA configuration. The target ELF SHA-256 was not present in the user-supplied output, and should not be claimed verified.
+
+Next engineering gate: document ownership and intended PS↔PL protocol for a new FPGA design; avoid modifying unknown contents in the stock PL design. A newly created design may implement separate control/status registers and a BRAM data window, with explicit handshake and versioned magic; verify resource/address assignment before building or deploying a new bitstream.
