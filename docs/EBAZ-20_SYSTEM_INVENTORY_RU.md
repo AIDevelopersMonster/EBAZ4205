@@ -117,3 +117,7 @@ The board returned the following additional **read-only** 32-bit words at AXI BR
 - Neither `arm-linux-gnueabihf-gcc` nor `arm-linux-gnueabi-gcc` is installed. `dpkg -l 'gcc-arm-linux*'` returns no installed packages.
 - Proposed WSL-only setup: install Ubuntu package `gcc-arm-linux-gnueabihf` plus ARMHF cross libc development files; compile a tiny fully statically linked ARMv7 binary first. A static test avoids requiring the old PetaLinux 2016.4 userspace to provide newer glibc symbols.
 - On-board filesystem, NAND, FPGA bitstream and access credentials must not be altered in this toolchain setup step.
+
+## EBAZ-20.11 — ARM toolchain and first reproducible app template
+
+Verified on CHUWI WSL2: `arm-linux-gnueabihf-gcc` 13.3.0, binary at `/usr/bin/arm-linux-gnueabihf-gcc`, `-print-sysroot` returns `/` (not necessarily erroneous for Debian multiarch cross-toolchain). Installation and ABI tests: [EBAZ-20_ARM_TOOLCHAIN_RU.md](EBAZ-20_ARM_TOOLCHAIN_RU.md). Canonical read-only ARM-to-AXI-BRAM source and build files: [../software/ebaz20-bram-reader/README.md](../software/ebaz20-bram-reader/README.md). Full static cross-build and execution on the target are **pending**, not claimed as PASS. The source code and its validation scripts were checked syntactically; no NAND or FPGA bitstream writes.
