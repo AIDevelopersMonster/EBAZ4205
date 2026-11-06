@@ -149,3 +149,31 @@ umount /dev/ebaz20-ram
 - Первый запуск `/dev/ebaz20-ram/ebaz20-bram-reader --help` завершился Segmentation fault (код 139). Ветвь --help не обращается к AXI BRAM, так что это не аппаратный тест PL.
 - Целостность бинарника после копирования ещё не подтверждена SHA-256. Тест на целевой платформе пока FAIL, несмотря на успешный GCC/ELF-check в WSL2.
 - Следующие диагностические действия, только чтение: `ls -l` обоих ELF, `sha256sum` обоих ELF, `grep /dev /proc/mounts`, `dmesg | tail -n 30`; на WSL проверить `arm-linux-gnueabihf-readelf -l` и `-A`. Не запускать аппаратное чтение до решения проблемы запуска.
+
+## 9. Восстановление корректного ELF после переполнения /dev
+
+Фактические результаты 2026-11-06: оба файла в /dev и /dev/ebaz20-ram имеют длину 65536 байт и SHA-256 3b7f8869912b58a67cdec8dcbca885bcf87aa200174f07e77921533c96179739. Проверенная ранее сборка WSL2 имеет SHA-256 e05b7cd4afd711ae6c3802c74037baa93422c7b082062c7c185205c563c5ae31. Следовательно, данные на плате **не соответствуют оригинальному ELF**.
+
+На плате /proc/mounts показывает последовательно devtmpfs /dev размером 117312 KiB и поверх него tmpfs /dev размером лишь 64 KiB. Последний доступен по пути /dev; файл заполнил все 65536 байт. Это убедительно указывает на усечение бинарника при передаче. Для окончательного подтверждения сравнить размер оригинала на WSL и повторить передачу, контролируя результат.
+
+Первая попытка запуска прямо из /dev вернула 126 Permission denied (исходный файл имел -rw-------). Копия после chmod 700 в отдельном tmpfs размером 8 MiB вернула 139 Segmentation fault, но была побайтно такой же, как некорректный 64-KiB файл. Ошибка запуска **не является доказательством ABI-несовместимости**, пока не выполнена проверенная передача.
+
+**Исправленный путь доставки:** передавать бинарник из WSL2 напрямую в **уже смонтированный** /dev/ebaz20-ram/ebaz20-bram-reader.new через SSH -T без PTY, затем только при успешной передаче делать chmod, mv и sha256sum. НЕ использовать /dev/ebaz20-bram-reader как промежуточное хранилище!
+
+Команды WSL2, после проверки имени SSH-ключа:
+
+```bash
+cd ~/EBAZ4205/software/ebaz20-bram-reader
+BIN=build/ebaz20-bram-reader
+KEY="$HOME/.ssh/ebaz4205_ecdsa"
+stat -c '%s bytes' "$BIN"
+sha256sum "$BIN"
+ssh -T -x -i "$KEY" -o IdentitiesOnly=yes root@192.168.1.77 \
+  'umask 077; cat > /dev/ebaz20-ram/ebaz20-bram-reader.new &&
+   chmod 700 /dev/ebaz20-ram/ebaz20-bram-reader.new &&
+   mv -f /dev/ebaz20-ram/ebaz20-bram-reader.new /dev/ebaz20-ram/ebaz20-bram-reader &&
+   sha256sum /dev/ebaz20-ram/ebaz20-bram-reader' \
+  < "$BIN"
+```
+
+Не переходить к чтению MMIO, пока проверка SHA-256 и `--help` на EBAZ4205 не завершились успешно. Не изменять NAND, U-Boot, bitstream.
