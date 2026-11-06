@@ -161,3 +161,13 @@ Based on actual board output supplied 2026-11-06:
 - The copied 64-KiB ELF problem previously observed is fully compatible with an intentionally small `/dev` tmpfs; do not store program binaries in `/dev` directly.
 
 Next read-only command set on board: `cat /etc/init.d/mdev`, `ls -l /etc/default/volatiles`, `grep -n ' /dev\|mount\|tmpfs' /etc/default/volatiles/* /etc/volatile.cache 2>/dev/null`, `cat /proc/mounts | grep ' /dev '`. Then CPU online/interrupt audit before changing init/service ordering.
+
+## EBAZ-20.20 — Причина повторного монтирования /dev установлена
+
+Вывод реальной платы подтверждает точную причину второго /dev mount: содержимое `/etc/init.d/mdev` начинается с `mount -t tmpfs tmpfs /dev -o size=64k,mode=0755`, затем создаёт `/dev/pts` и `/dev/shm`, монтирует devpts, создаёт `/dev/mdev.seq`, записывает `/sbin/mdev` в `/proc/sys/kernel/hotplug`, выполняет `mdev -s` и при необходимости восстанавливает FIFO `/dev/initctl`. Этот скрипт запускается через `/etc/rcS.d/S04mdev`. Первоначальный devtmpfs ядра перекрывается 64-KiB tmpfs из mdev-скрипта.
+
+`/etc/fstab` НЕ содержит /dev, поэтому источник не mountall/fstab. `populate-volatile.sh` обслуживает файлы и ссылки из `/etc/default/volatiles`, а grep `/etc/volatile.cache` не обнаружил инструкций монтирования /dev. Проблема усечения ARM ELF при передаче через /dev (ровно 65536 байт) объясняется ограничением размера этого tmpfs, не ошибкой GCC или AXI.
+
+Важное ограничение: наличие повторного монтирования само по себе не доказывает неисправность; mdev обеспечивает создание узлов устройств и hotplug. **Не** убирать S04mdev, не делать `umount /dev` в работающей системе и не менять NAND без аудита зависимостей и возможности отката. Целевая стратегия: сохранить работающую baseline, исследовать необходимость tmpfs поверх devtmpfs и сохранение работы mdev без повторного mount.
+
+Следующая read-only проверка: текущие `cat /proc/sys/kernel/hotplug`, `/dev` key nodes and mounts, `/sys/devices/system/cpu/{present,online}`, `/proc/interrupts`; затем изучить действительный `modutils.sh`, `inetd.busybox` и `/etc/inetd.conf` до отключения каких-либо служб.
