@@ -37,3 +37,11 @@
 - Команда `netstat -lntup` не поддерживается BusyBox 1.24.1 (нет опции `-p`); для следующей инвентаризации используем `netstat -lnt` и `netstat -lnu`.
 
 Следующий шаг EBAZ-20.2 — прочитать DT/sysfs-маршрут UARTLite и список реально слушающих сетевых портов. Никаких записей в MMIO, NAND или конфигурацию пока нет.
+
+## EBAZ-20.2 - PL UARTLite and network listening services
+
+Hardware log confirms the PL UARTLite at 0x42c00000 is a Linux platform device under soc0/amba_pl and is bound to the uartlite driver. Its character device is /dev/ttyUL2. PS UART devices /dev/ttyPS0 and /dev/ttyPS1 exist. Legacy PL configuration device /dev/xdevcfg and sysfs class are present; neither firmware nor PL programming was attempted. No UIO device was detected in EBAZ-20.1.
+
+BusyBox netstat -lnt showed only TCP port 22 listening on IPv4 and IPv6. netstat -lnu showed no UDP listening sockets. Process list included inetd, DHCP client, Dropbear, logging, getty, and a key-authenticated SSH session; it showed no recognized running mining process. A listening socket audit does not prove the system is free of vulnerabilities or malware.
+
+Next safe read-only checks: inspect /proc/device-tree/amba_pl and the of_node attributes of the 42c00000.serial device; inspect active inetd configuration. Do not access MMIO registers, FPGA configuration device, or persistent NAND until the register map and rollback requirements are understood.
