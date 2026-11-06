@@ -45,3 +45,9 @@ Status: UBOOT_UART_CONTROL_PASS
 
 Do not modify the factory NAND before backup.
 Do not publish unsanitized UART logs or credentials.
+
+## EBAZ-20 — разработка собственных ARM-программ
+
+[Стандарт toolchain для WSL2/ARM Cortex-A9: установка, сборка, ELF/ABI, доставка и тестирование](docs/EBAZ-20_ARM_TOOLCHAIN_RU.md).
+
+[Первое приложение: read-only AXI BRAM reader](software/ebaz20-bram-reader/README.md). Использует `/dev/mem` только на чтение по адресу `0x40000000` и не меняет NAND/FPGA. Аппаратная проверка ARM-бинарника ещё не выполнена.
