@@ -79,3 +79,11 @@ Reference: https://docs.amd.com/v/u/en-US/pg078-axi-bram-ctrl . Next phase: read
 Подтверждено в Linux: `40000000.axi_bram_ctrl` есть в `/sys/devices/soc0/amba_pl/`, но ссылка `driver` отсутствует. `/proc/iomem` не содержит диапазона 0x40000000, что совместимо с отсутствием привязанного драйвера; работоспособность BRAM этим не проверена. Доступна `/sbin/devmem` (апплет BusyBox). Интерфейс `/dev/xdevcfg` существует. `dmesg` показывает регистрацию UARTLite при 0x42c00000 и не содержит сообщений о BRAM. Устройство остается под управлением исходного bitstream, который ранее успешно загрузил U-Boot.
 
 Следующее испытание: однократное **только чтение** 32-битного слова 0x40000000 через `/sbin/devmem`, желательно при подключенном UART; учитывать риск аппаратного зависания/ошибки шины в случае отсутствующего AXI slave. Не выполнять никаких MMIO записей, перепрограммирования PL или NAND. Значение, прочитанное один раз, доказывает лишь отклик адреса, а не полноценный двусторонний обмен PS/PL.
+
+## EBAZ-20.7 — First hardware read of AXI BRAM address
+
+In running Linux 4.6.0-xilinx on EBAZ4205, `/sbin/devmem 0x40000000 32` returned `0x00000043` with exit code 0. Thus a 32-bit ARM-side physical-address read at the AXI BRAM DT base completed without a reported bus error. This does **not** yet establish writable BRAM, unique backing storage, data origin, or an ARM-to-PL application protocol. Hex byte 0x43 equals ASCII 'C', but that is only a possible interpretation and is not confirmed. No MMIO writes were performed.
+
+An `xauth: command not found` line appeared in the SSH session. It is independent of the BRAM read and likely due to optional X11 forwarding; future SSH sessions may use `ssh -x`.
+
+Next low-risk step: read a few more aligned 32-bit words from the established DT mapping at 0x40000004, 0x40000008, 0x4000000C, and 0x40000010, recording exact results; do not modify MMIO, FPGA bitstream, NAND, or boot configuration. Only perform writes after identifying the contents and consumers of this memory and preparing a rollback plan.
