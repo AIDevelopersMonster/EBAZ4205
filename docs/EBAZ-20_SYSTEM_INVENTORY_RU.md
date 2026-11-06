@@ -56,3 +56,12 @@ Next safe read-only checks: inspect /proc/device-tree/amba_pl and the of_node at
 - The existence of a BRAM-controller node in DT is not yet evidence of a working accessible BRAM: verify its DT compatible, reg, status and kernel binding before any MMIO experiment.
 
 Next read-only checks: list `/proc/device-tree/amba_pl/axi_bram_ctrl@40000000/`, decode the compatible, reg and status properties, inspect `/sys/devices/soc0/amba_pl`, and check whether `/dev/mem` is available. Do not write NAND or read/write arbitrary MMIO until the BRAM map is known.
+
+## EBAZ-20.4 — AXI BRAM Controller Device Tree inventory
+
+- Board DT node `/proc/device-tree/amba_pl/axi_bram_ctrl@40000000`, compatible `xlnx,axi-bram-ctrl-4.0`.
+- `reg` bytes `40 00 00 00 00 00 20 00` encode CPU physical base `0x40000000` and address **window size** `0x2000` (8192 bytes); **not yet proof** of backed RAM capacity or readable hardware.
+- DT node has parameters `xlnx,memory-depth`, `xlnx,bram-addr-width`, `xlnx,ecc`, `xlnx,bram-inst-mode`, `xlnx,single-port-bram`, etc. Values not yet inspected.
+- DT `status` property absent: per Devicetree Specification, equivalent to `okay`. Linux created the platform device `/sys/devices/soc0/amba_pl/40000000.axi_bram_ctrl`.
+- `/dev/mem` exists, permissions `crw-r----- root kmem`, but no direct access has been attempted and no BRAM hardware read/write is confirmed.
+- Next check is **read-only DT parameters and driver binding**. Do not touch raw MMIO or change the bitstream yet.
