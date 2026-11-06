@@ -50,4 +50,10 @@ Do not publish unsanitized UART logs or credentials.
 
 [Стандарт toolchain для WSL2/ARM Cortex-A9: установка, сборка, ELF/ABI, доставка и тестирование](docs/EBAZ-20_ARM_TOOLCHAIN_RU.md).
 
-[Первое приложение: read-only AXI BRAM reader](software/ebaz20-bram-reader/README.md). Использует `/dev/mem` только на чтение по адресу `0x40000000` и не меняет NAND/FPGA. Аппаратная проверка ARM-бинарника ещё не выполнена.
+[Первое приложение: read-only AXI BRAM reader](software/ebaz20-bram-reader/README.md). Использует `/dev/mem` только на чтение по адресу `0x40000000` и не меняет NAND/FPGA. Аппаратная проверка завершена: 32 слова (128 байт) успешно прочитаны через AXI BRAM на реальной плате; код завершения 0.
+
+## Видео: EBAZ-20 — собственная ARM-программа читает FPGA через AXI
+
+[▶️ ARM читает FPGA! EBAZ4205 / Zynq-7000 / AXI BRAM — 128 байт, PASS (YouTube Shorts)](https://youtube.com/shorts/LdDsGtTQiSQ)
+
+В ролике показано чтение 32 слов (128 байт) собственной программой на C, скомпилированной для ARM Cortex-A9 и запущенной под Linux 4.6.0-xilinx. Данные совпали с контрольными чтениями через `devmem`; `EBAZ20_READ32_EXIT=0`. Подтверждено **чтение** по AXI-адресу, а не запись или готовый двусторонний протокол ARM↔FPGA. [Технический журнал](docs/EBAZ-20_SYSTEM_INVENTORY_RU.md).
