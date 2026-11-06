@@ -85,8 +85,8 @@ make check
 На EBAZ4205 по SSH (root), при подключенном UART:
 
 ```sh
-mkdir -p /mnt/ebaz20-ram
-mount -t tmpfs -o size=8m,mode=700 tmpfs /mnt/ebaz20-ram
+mkdir -p /dev/ebaz20-ram
+mount -t tmpfs -o size=8m,mode=0700,exec tmpfs /dev/ebaz20-ram
 cat /proc/mounts | grep ebaz20-ram
 ```
 
@@ -97,10 +97,10 @@ cat /proc/mounts | grep ebaz20-ram
 ```bash
 cd ~/EBAZ4205/software/ebaz20-bram-reader
 ssh -x -i ~/.ssh/ebaz4205_ecdsa -o IdentitiesOnly=yes \
-  root@192.168.1.77 'cat > /mnt/ebaz20-ram/ebaz20-bram-reader' \
+  root@192.168.1.77 'cat > /dev/ebaz20-ram/ebaz20-bram-reader' \
   < build/ebaz20-bram-reader
 ssh -x -i ~/.ssh/ebaz4205_ecdsa -o IdentitiesOnly=yes \
-  root@192.168.1.77 'chmod 700 /mnt/ebaz20-ram/ebaz20-bram-reader'
+  root@192.168.1.77 'chmod 700 /dev/ebaz20-ram/ebaz20-bram-reader'
 ```
 
 Команда предполагает, что SSH-ключ `~/.ssh/ebaz4205_ecdsa` доступен **именно в WSL2**; ранее ключ также использовался в Windows PowerShell. Если его нет в WSL2, не копируйте приватный ключ в публичные каталоги: используйте уже работающий Windows SSH-клиент с защищённым ключом и подходящий безопасный способ переноса.
@@ -108,8 +108,8 @@ ssh -x -i ~/.ssh/ebaz4205_ecdsa -o IdentitiesOnly=yes \
 На плате:
 
 ```sh
-/mnt/ebaz20-ram/ebaz20-bram-reader --help
-/mnt/ebaz20-ram/ebaz20-bram-reader --words 16
+/dev/ebaz20-ram/ebaz20-bram-reader --help
+/dev/ebaz20-ram/ebaz20-bram-reader --words 16
 ```
 
 Сначала `--help`: она не обращается к `/dev/mem`. После её успешного выполнения и только при подключенном UART проведите чтение 16 слов. Сопоставьте с журналом EBAZ-20.8/20.9. При изменении слов возможна работа логики PL, но это требует дальнейшего доказательства. Отсутствие изменений не доказывает, что область не обновляется.
@@ -119,7 +119,7 @@ ssh -x -i ~/.ssh/ebaz4205_ecdsa -o IdentitiesOnly=yes \
 После испытаний на плате:
 
 ```sh
-umount /mnt/ebaz20-ram
+umount /dev/ebaz20-ram
 ```
 
 Только после завершения процесса и прекращения использования файлов. Это не касается NAND и не изменяет U-Boot.
@@ -141,3 +141,11 @@ umount /mnt/ebaz20-ram
 - Проверить способ безопасной доставки через WSL2 или Windows SSH.
 - Если понадобится динамическая компоновка, создать проверенный sysroot из установленных rootfs-библиотек без публикации приватного образа.
 - До MMIO-записей определить назначение данных BRAM и существующих потребителей FPGA.
+
+## 8. Результат аппаратного теста: код 139 (2026-11-06)
+
+- Переданный файл ELF сначала отказал в исполнении из каталога /dev с кодом 126 (Permission denied); точные права и флаги монтирования ещё не подтверждены.
+- Отдельный tmpfs размером 8 MiB смонтирован по /dev/ebaz20-ram с опцией exec. Файл скопирован туда и получил режим 0700.
+- Первый запуск `/dev/ebaz20-ram/ebaz20-bram-reader --help` завершился Segmentation fault (код 139). Ветвь --help не обращается к AXI BRAM, так что это не аппаратный тест PL.
+- Целостность бинарника после копирования ещё не подтверждена SHA-256. Тест на целевой платформе пока FAIL, несмотря на успешный GCC/ELF-check в WSL2.
+- Следующие диагностические действия, только чтение: `ls -l` обоих ELF, `sha256sum` обоих ELF, `grep /dev /proc/mounts`, `dmesg | tail -n 30`; на WSL проверить `arm-linux-gnueabihf-readelf -l` и `-A`. Не запускать аппаратное чтение до решения проблемы запуска.
