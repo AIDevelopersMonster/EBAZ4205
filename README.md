@@ -63,3 +63,7 @@ Do not publish unsanitized UART logs or credentials.
 [**AXI в Xilinx Zynq-7000: от программы ARM до памяти FPGA — теория, адресация, протокол и EBAZ-20**](docs/EBAZ-20_AXI_ARM_FPGA_PRACTICAL_RU.md).
 
 Статья разделяет AXI4, AXI4-Lite и AXI4-Stream, показывает каналы чтения, схему PS→PL, реальную адресную карту BRAM, `mmap()`-чтение 128 байт и план следующей лаборатории с настоящим двусторонним протоколом. Подтверждённые измерения отделены от проектных предположений.
+
+## EBAZ-20 — ревизия загрузки, служб и Cortex-A9
+
+[**Открыт аудит BootROM/FSBL → U-Boot → Linux → SysVinit → сетевые службы и два Cortex-A9**](docs/EBAZ-20_BOOT_INIT_CPU_AUDIT_RU.md). Сначала снимаем фактическую карту автозагрузки, содержимое `/etc/inittab`, `rcS.d`, `rc5.d`, список процессов, CPU online и mountpoints. Изменения NAND/bitstream и отключение сервисов пока запрещены. Приоритеты: наложенный 64-KiB tmpfs на `/dev`, Ethernet PHY/DHCP, пустой `inetd`, а также проверка SMP/драйверов.
