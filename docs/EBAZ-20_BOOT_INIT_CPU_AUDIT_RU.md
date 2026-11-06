@@ -254,3 +254,18 @@ date -u
 ~~~
 
 **Acceptance criteria:** link disabled exactly as intended, no inetd process after reboot, UART console functional, Ethernet DHCP lease present, SSH key login separately proven, same JFFS2 root. First do not change tcf/modutils or other init scripts in the same cycle.
+
+## EBAZ-20.25 — inetd autostart disabled, reboot regression PASS
+
+Real-board post-reboot output (2026-11-07, user supplied):
+
+- `ls -l /etc/rcS.d/*inetd*` shows `/etc/rcS.d/disabled.S65inetd.busybox -> ../init.d/inetd.busybox`. The original S65 link is absent; the target init script remains preserved. This is a persistent change to the JFFS2 root.
+- `pidof inetd || echo INETD_NOT_RUNNING` returns `INETD_NOT_RUNNING`. This confirms disabling the SysV autostart worked after a full NAND boot. **INETD_DISABLE_PASS**.
+- `ifconfig eth0` reports `192.168.1.77/24`, interface `UP BROADCAST RUNNING MULTICAST`, RX=1031 packets, errors=0, dropped=185, TX=1158, errors=0. `/sys/class/net/eth0/carrier` = `1`. These counters are a single snapshot; RX drops need a second time-differenced measurement before root-cause inference.
+- Default route to `192.168.1.254` (metric 10) through eth0 and LAN route `192.168.1.0/24`. DHCP `udhcpc` PID 818. Dropbear PIDs 829/856/857. Working UART root shell. Network configuration and SSH server state remain functional after inetd autostart disable; an independent post-reboot SSH key-login test was not included in the output and is pending.
+- `date -u` yields `Fri Jul 23 14:18:14 UTC 2010`, so **system time is incorrect**. Previous full kernel log showed `rtc-pcf8563 0-0051 ... probe failed with error -5` and `hctosys: unable to open rtc device (rtc0)`. RTC presence, current clock source, time-sync method and DT I2C description require read-only investigation before changing config or using raw I2C operations.
+- The initial `Login incorrect` appeared because commands were pasted while at the UART `login:` prompt; subsequent `root@zedboard-zynq7:~#` confirms console login. It is not a failed boot.
+
+**Change verdict:** one deliberately isolated SysV change (rename inetd startup symlink) passed the post-reboot functional checks; other startup items remain untouched. Do not disable tcf-agent/modutils or modify mdev in the same cycle; future isolated changes can follow this measured baseline. The DHCP boot ordering/race and kernel message about target 25MHz Ethernet frequency remain OPEN despite eventual successful address assignment.
+
+**Next read-only gate:** `ls -l /dev/rtc* /sys/class/rtc`, `cat /proc/driver/rtc`, `ls -l /sys/bus/i2c/devices/0-0051`, `dmesg | grep -i -E 'rtc|pcf8563|hctosys|clock|eth0'` and `date -u`. Avoid i2c writes/scans until hardware is identified. After that decide whether to time-sync externally and then audit boot timestamps, or to fix the Device Tree RTC node in a separately reversible firmware revision.
