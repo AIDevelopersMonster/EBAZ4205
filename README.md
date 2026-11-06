@@ -57,3 +57,9 @@ Do not publish unsanitized UART logs or credentials.
 [▶️ ARM читает FPGA! EBAZ4205 / Zynq-7000 / AXI BRAM — 128 байт, PASS (YouTube Shorts)](https://youtube.com/shorts/LdDsGtTQiSQ)
 
 В ролике показано чтение 32 слов (128 байт) собственной программой на C, скомпилированной для ARM Cortex-A9 и запущенной под Linux 4.6.0-xilinx. Данные совпали с контрольными чтениями через `devmem`; `EBAZ20_READ32_EXIT=0`. Подтверждено **чтение** по AXI-адресу, а не запись или готовый двусторонний протокол ARM↔FPGA. [Технический журнал](docs/EBAZ-20_SYSTEM_INVENTORY_RU.md).
+
+## Практическая статья: AXI и ARM ↔ FPGA
+
+[**AXI в Xilinx Zynq-7000: от программы ARM до памяти FPGA — теория, адресация, протокол и EBAZ-20**](docs/EBAZ-20_AXI_ARM_FPGA_PRACTICAL_RU.md).
+
+Статья разделяет AXI4, AXI4-Lite и AXI4-Stream, показывает каналы чтения, схему PS→PL, реальную адресную карту BRAM, `mmap()`-чтение 128 байт и план следующей лаборатории с настоящим двусторонним протоколом. Подтверждённые измерения отделены от проектных предположений.
