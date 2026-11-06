@@ -149,3 +149,15 @@ done
 - `/etc/rcS.d/S03mountall.sh`: вызывает `mount -at nonfs,nosmbfs,noncpfs 2>/dev/null` (монтирует подходящие записи `/etc/fstab`), при необходимости пересоздаёт `/dev/initctl`, затем отправляет `SIGUSR1` PID1 и вызывает `swapon -a`. Откуда возникло второе 64-KiB tmpfs-монтирование на `/dev`, пока не установлено: необходимо читать `/etc/fstab` и `/etc/init.d/populate-volatile.sh`.
 
 Контроль: **никаких правок текущей NAND**, не перезапускать Dropbear и не удалять сетевые сценарии, пока не получена карта зависимостей. Следующий read-only блок: 1) полные аргументы процессов Dropbear из procfs; 2) `/etc/fstab`; 3) `/etc/init.d/populate-volatile.sh`.
+
+## EBAZ-20.19 — Dropbear verified, /dev overlay source still unknown
+
+Based on actual board output supplied 2026-11-06:
+
+- `/proc/{833,879,930,931}/cmdline` contains full Dropbear arguments `-r /etc/dropbear/dropbear_rsa_host_key -p 22 -s -j -k -r /etc/dropbear/dropbear_ecdsa_host_key` for all inspected processes. Hence the SSH concern raised from abbreviated BusyBox `ps` output is RESOLVED: password login is disabled by `-s`, and TCP local/remote forwarding is disabled by `-j`/`-k`. Do not restart Dropbear merely to fix this non-issue.
+- `/etc/fstab` defines `/dev/root` mounted on `/`, proc, devpts, `/run` tmpfs and `/var/volatile` tmpfs. It contains NO `/dev` tmpfs entry. The earlier supposition that `S03mountall.sh` loads the 64-KiB `/dev` overlay from fstab is NOT supported.
+- `/etc/init.d/populate-volatile.sh` is a generic config-driven file/dir/link/bind-mount manager reading `/etc/default/volatiles` (with cached operations possible); no direct mount of `/dev` as tmpfs appears in the inspected script. Examine config and cached operations before excluding its influence.
+- Prior `/proc/mounts` listed two mounts over `/dev`: kernel `devtmpfs`, then a 64-KiB `tmpfs`, which masks the former. This may be deliberate mdev init behavior; **not enough evidence to call it erroneous**. Investigate `/etc/init.d/mdev`, `/etc/default/volatiles/*`, `/etc/volatile.cache`, other init scripts without changing files or unmounting `/dev`.
+- The copied 64-KiB ELF problem previously observed is fully compatible with an intentionally small `/dev` tmpfs; do not store program binaries in `/dev` directly.
+
+Next read-only command set on board: `cat /etc/init.d/mdev`, `ls -l /etc/default/volatiles`, `grep -n ' /dev\|mount\|tmpfs' /etc/default/volatiles/* /etc/volatile.cache 2>/dev/null`, `cat /proc/mounts | grep ' /dev '`. Then CPU online/interrupt audit before changing init/service ordering.
