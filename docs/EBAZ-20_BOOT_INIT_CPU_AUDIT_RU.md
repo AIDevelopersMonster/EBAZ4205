@@ -430,3 +430,38 @@ Actual user UART log from target EBAZ4205:
 - **SNTP_SERVICE_MANUAL_PASS:** script works in background, confirms eth0 IPv4/default route, performs valid SNTP exchange and sets kernel clock on real target; no repeated attempts needed.
 - `/run` already proven tmpfs and binary in persistent JFFS2 SHA256 verified. **Autostart S30 link and actual reboot test still PENDING**.
 - Next one-change gate: confirm no existing `/etc/rc5.d/S30ebaz20-sntp`; create `ln -s ../init.d/ebaz20-sntp /etc/rc5.d/S30ebaz20-sntp`; inspect link; with UART rescue ready reboot once and verify **fresh** `/run/ebaz20-sntp.log`, status PASS and 2026 `date -u`, DHCP/route and Dropbear. Do not infer automatic boot PASS from manual success. Rollback via `rm /etc/rc5.d/S30ebaz20-sntp` only.
+
+
+## EBAZ-20.37 — Automatic SNTP synchronization after NAND boot PASS
+
+**Real hardware:** User's EBAZ4205 UART console following the SysV S30 autostart enablement and system reboot (2026-11-07):
+
+~~~text
+zedboard-zynq7 login: root
+root@zedboard-zynq7:~# date -u
+Sat Nov  7 07:58:11 UTC 2026
+root@zedboard-zynq7:~# /etc/init.d/ebaz20-sntp status
+PASS
+root@zedboard-zynq7:~# cat /run/ebaz20-sntp.log
+SNTP: worker started; host=162.159.200.1 max_attempts=24
+SNTP: network ready, attempt=1
+EBAZ20_SNTP_QUERY_PASS server=162.159.200.1 stratum=3 rtt_ms=5.0
+NTP estimated UTC: 2026-11-07 07:57:36 UTC
+EBAZ20_SNTP_CLOCK_SET_PASS
+Sat Nov  7 07:57:36 UTC 2026
+SNTP: system clock set successfully
+root@zedboard-zynq7:~# date -u
+Sat Nov  7 07:58:22 UTC 2026
+root@zedboard-zynq7:~# ifconfig eth0
+eth0      Link encap:Ethernet  HWaddr 00:0A:35:00:01:22
+          inet addr:192.168.1.77  Bcast:192.168.1.255  Mask:255.255.255.0
+          UP BROADCAST RUNNING MULTICAST  MTU:1500
+          RX packets:155 errors:0 dropped:60
+          TX packets:16 errors:0 dropped:0
+~~~
+
+**Verdict:** `EBAZ20_SNTP_AUTOBOOT_PASS`. A fresh post-reboot volatile `/run/ebaz20-sntp.log` shows a new SNTP exchange at 07:57:36 UTC (previous manual service run was at 07:52:51), validates that SNTP was launched automatically by SysVinit, awaited network readiness, succeeded on attempt 1, and updated CLOCK_REALTIME. This is the first verified fully autonomous cycle after persistent binary + init-script + S30 startup link installation. The root console login and eth0 IPv4/DHCP remain operational. No external hardware RTC required for **network-available** boot. Final post-reboot Dropbear key-auth login has not separately been repeated; previous Dropbear startup functionality was confirmed.
+
+**Boundaries:** One-off, unauthenticated SNTP (public IPv4 162.159.200.1 UDP/123); no cryptographic proof or continuous clock-drift correction. RTC driver probe remains unresolved, and system time may be invalid until networking and the SNTP worker succeed; offline boots may remain at the build-time/default date. Bounded 24 attempts at 10s intervals, then status FAIL without blocking boot. No evidence of reboot-time optimization of other services. `RX dropped:60` with `RX errors:0` is an observed counter snapshot, not yet a diagnosed defect; measure rate and correlate load if investigating.
+
+**Closure:** SNTP bootstrapping task DONE at EBAZ-20.37. The next independent cleanup can revisit no-op `tcf-agent`/`modutils` init links one by one, preserving startup-safe rollback; also potentially audit Device Tree phantom RTC and MACB target 25 MHz warning, but neither blocks current network-available boot.
