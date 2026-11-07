@@ -1,93 +1,95 @@
-# EBAZ4205 — Xilinx Zynq ARM + FPGA Laboratory
+# EBAZ4205 — справочник и лаборатория ARM + FPGA
 
-Hardware: EBAZ4205 / XC7Z010
+**Открытый информационно-справочный ресурс для владельцев EBAZ4205, разработчиков Linux, ARM и FPGA, преподавателей и исследователей.** Плата на базе Xilinx Zynq-7000 **XC7Z010** первоначально применялась в майнере Ebang Ebit E9+. Здесь собраны электрические схемы и распиновки, сведения о штатной загрузке, пошаговые проверки, исходники ARM-приложений, каталог внешних проектов и воспроизводимые результаты испытаний.
 
-## Initial observations
+**Язык основного справочника — русский.** Названия сигналов, команд, каталогов и исходников сохраняются на английском.
 
-- U-Boot 2015.07
-- PetaLinux 2016.4
-- Linux 4.6.0-xilinx
-- Dual-core ARM Cortex-A9
-- DDR: 256 MiB
-- NAND: 128 MiB
-- UART console: ttyPS0, 115200 8N1
-- Boot source: NAND
-- FPGA configuration: top_ctrl
+> **Границы применимости:** большинство результатов испытаний получено **на одном бывшем в употреблении экземпляре** EBAZ4205 с очищенной от майнера **NAND Linux 4.6.0-xilinx / PetaLinux 2016.4** и **сохранённым заводским FPGA bitstream**. Ни программное обеспечение, ни распиновки не гарантированно подходят ко всем ревизиям. Это не готовый серийный образ и не универсальный bootloader.
 
-## Milestone EBAZ-00
+## Начните здесь
 
-UART communication confirmed.
-U-Boot autoboot interrupted using key 'd'.
+| Для кого | Что открыть |
+|---|---|
+| **Владелец платы** | [Первый запуск — UART, Linux, SD-карта, кнопки](docs/QUICKSTART_RU.md) |
+| **Разработчик ARM/Linux** | [Инструментарий для Cortex-A9](docs/EBAZ-20_ARM_TOOLCHAIN_RU.md) · [Программы и исходники](software/README.md) |
+| **Разработчик FPGA** | [Архитектура PS/PL](docs/ARCHITECTURE_RU.md) · [Аппаратная карта](docs/EBAZ-21_BOARD_PINOUT_AND_FACTORY_FPGA_RU.md) · [FPGA/RTL](rtl/README.md) |
+| **Разработчик платы расширения** | [CSV-пины и электрические ограничения](hardware/README.md) |
+| **Исследователь сообщества** | [Атлас сторонних проектов EBAZ4205](docs/EBAZ-21_COMMUNITY_PROJECTS_REVIEW_RU.md) |
+| **Проверяющий результаты** | [Матрица подтверждённых функций и открытых вопросов](docs/VERIFICATION_MATRIX_RU.md) |
+| **Участник проекта** | [Как предложить исправление или дополнение](CONTRIBUTING.md) |
 
-Status: UBOOT_UART_CONTROL_PASS
+**[Полное оглавление документации](docs/README.md)** — маршруты по всем EBAZ-03…23, справочникам, исходникам и лабораторным материалам.
 
-## Пошаговая инструкция: UART → Linux root shell
+## Что представляет собой плата
 
-[**EBAZ-03 — Подключение USB–TTL, перехват U-Boot клавишей `d` и загрузка Linux без майнера до приглашения `sh-4.3#`**](docs/EBAZ-03_UART_LINUX_SHELL_RU.md)
+| Компонент | Описание |
+|---|---|
+| SoC | Xilinx Zynq XC7Z010: **2 аппаратных ARM Cortex-A9 + FPGA PL** |
+| RAM | Внешняя DDR3, номинально 256 МиБ |
+| NAND | Номинально 128 МиБ; в нашей системе загрузочная NAND, JFFS2 rootfs `mtd6` |
+| Ethernet | 10/100 через PHY IP101G и сигналы PL/EMIO; требует совместимого FPGA bitstream |
+| Консоль | PS UART `ttyPS0`, 115200 8N1 |
+| microSD | SDIO контроллер **PS**; на нашем экземпляре SDHC 16 ГБ работает под NAND Linux |
+| Внешние сигналы | Кнопки SW2/SW3 — PS MIO; LED6, FAN J3/J5, DATA1–3 — PL-контакты |
 
-Проверено на реальной плате. Заводская NAND не изменяется; режим диагностический (`init=/bin/sh`, корневая файловая система только для чтения).
+Схемы, ball-пины и границы подтверждения: [Архитектура](docs/ARCHITECTURE_RU.md) и [hardware](hardware/README.md). **Нельзя путать физическую разводку PCB с набором функций, загруженных в текущую FPGA.**
 
-## Видео: EBAZ-19 — запуск очищенного Linux из NAND
+## Проверено на нашей плате
 
-[▶️ EBAZ4205: пересборка Linux, запись JFFS2 в NAND и успешная автономная загрузка (YouTube Shorts)](https://youtube.com/shorts/_ULPOgmIEM0)
+| Функция | Результат | Доказательство |
+|---|---|---|
+| NAND → автономная Linux без майнера | **PASS** | [EBAZ-14](docs/EBAZ-14_AUTONOMOUS_LINUX_BOOT_RU.md) |
+| Ethernet, DHCP, SSH по ключу | **PASS** | [Аудит загрузки](docs/EBAZ-20_BOOT_INIT_CPU_AUDIT_RU.md) |
+| ARM-программа читает AXI BRAM | **PASS — только чтение 128 байт** | [Код BRAM reader](software/ebaz20-bram-reader/README.md) |
+| Две кнопки SW2/SW3 через PS GPIO | **PASS** | [Программа на C](software/ebaz23-gpio-demo/README.md) |
+| SDHC 16 ГБ, FAT/VFAT, автомонтирование | **PASS** | [EBAZ-23](docs/EBAZ-23_PS_MIO_EMIO_AVAILABLE_PINS_RU.md) |
+| Тест кнопок, запускаемый с SD-карты | **PASS** | [Developer SD](sdcard/EBAZ4205/tests/buttons/README.md) |
+| Синхронизация системного времени по SNTP | **PASS — для исследованной конфигурации** | [EBAZ-20 boot audit](docs/EBAZ-20_BOOT_INIT_CPU_AUDIT_RU.md) |
 
-Показан результат EBAZ-19: загрузка Linux с очищенного раздела NAND, восстановленная сеть и доступ по SSH. [Технический журнал EBAZ-19](docs/EBAZ-19_CLEAN_JFFS2_REBUILD_RU.md).
+**Не проверены или не гарантированы:** программное управление LED6 в заводском bitstream, PWM вентиляторов, свободность всех DATA-пинов, запись в AXI BRAM/регистры PL, собственный безопасный bitstream, горячая замена microSD и самостоятельная загрузка с SD вместо NAND. Подробно: **[Матрица PASS / REFERENCE / PENDING / UNKNOWN](docs/VERIFICATION_MATRIX_RU.md)**.
 
-## Project goals
+## Практическая лаборатория № 1 — SD-карта и две кнопки
 
-1. Preserve factory firmware and configuration.
-2. Document bootloader and memory architecture.
-3. Investigate Linux without miner software.
-4. Develop FPGA and ARM applications.
-5. Build reproducible hardware/software laboratories.
+На нашей подготовленной Linux карта автоматически смонтирована в `/run/media/mmcblk0p1`. Копируем на неё содержимое [sdcard](sdcard/README.md), затем запускаем:
 
-## Safety
+```sh
+sh /run/media/mmcblk0p1/EBAZ4205/tests/buttons/test-buttons.sh
+```
 
-Do not modify the factory NAND before backup.
-Do not publish unsanitized UART logs or credentials.
+Нажатия SW2/SW3 выводятся в консоль. **Тест уже выполнен на физической плате.** Совместим с ограниченной BusyBox; не изменяет направление GPIO и не требует перепрошивки NAND/FPGA. Завершение `Ctrl+C`.
 
-## EBAZ-20 — разработка собственных ARM-программ
+[Пошаговый Quickstart](docs/QUICKSTART_RU.md) · [Полный протокол теста](sdcard/EBAZ4205/tests/buttons/README.md).
 
-[Стандарт toolchain для WSL2/ARM Cortex-A9: установка, сборка, ELF/ABI, доставка и тестирование](docs/EBAZ-20_ARM_TOOLCHAIN_RU.md).
+## Библиотека знаний
 
-[Первое приложение: read-only AXI BRAM reader](software/ebaz20-bram-reader/README.md). Использует `/dev/mem` только на чтение по адресу `0x40000000` и не меняет NAND/FPGA. Аппаратная проверка завершена: 32 слова (128 байт) успешно прочитаны через AXI BRAM на реальной плате; код завершения 0.
+- **[Справочник аппаратной архитектуры](docs/ARCHITECTURE_RU.md)** — ARM/PS, FPGA/PL, MIO/EMIO, AXI, Ethernet, NAND, SD, LED/FAN/DATA.
+- **[Аппаратные схемы и распиновка](docs/EBAZ-21_BOARD_PINOUT_AND_FACTORY_FPGA_RU.md)** — опубликованные PCB, XDC, выводы и существующая заводская конфигурация.
+- **[Атлас проектов других авторов](docs/EBAZ-21_COMMUNITY_PROJECTS_REVIEW_RU.md)** — GitHub-репозитории, PetaLinux/Buildroot, расширения, ограничения и лицензии.
+- **[AXI на примере реальной EBAZ4205](docs/EBAZ-20_AXI_ARM_FPGA_PRACTICAL_RU.md)** — теория и измеренный интерфейс ARM↔PL.
+- **[Linux: NAND, загрузка, сеть и диагностика](docs/README.md#linux-nand-и-восстановление)** — подробные протоколы EBAZ-03, 14, 16, 19 и 20.
+- **[Коммерческий комплект и передача покупателю](docs/EBAZ-15_CLIENT_HANDOFF_RU.md)** — черновик процедуры, не сертификация устройства.
 
-## Видео: EBAZ-20 — собственная ARM-программа читает FPGA через AXI
+## Структура проекта
 
-[▶️ ARM читает FPGA! EBAZ4205 / Zynq-7000 / AXI BRAM — 128 байт, PASS (YouTube Shorts)](https://youtube.com/shorts/LdDsGtTQiSQ)
+```text
+README.md           Главная страница / точка входа
+docs/               Справочники, инструкции и архив лабораторий EBAZ-03…23
+hardware/           Машиночитаемые таблицы PS MIO и PL DATA
+software/           Исходники ARM/Linux-программ и инструкции сборки
+sdcard/             Файлы комплектной microSD Developer SD
+rtl/                Место для собственного FPGA/RTL (пока без готового PL-проекта)
+tools/              Офлайн-утилиты разработчика
+tests/              Инфраструктура будущих проверок
+evidence/public/    Место для обезличенных результатов
+releases/           Место для проверенных выпусков, пока нет серийного образа
+```
 
-В ролике показано чтение 32 слов (128 байт) собственной программой на C, скомпилированной для ARM Cortex-A9 и запущенной под Linux 4.6.0-xilinx. Данные совпали с контрольными чтениями через `devmem`; `EBAZ20_READ32_EXIT=0`. Подтверждено **чтение** по AXI-адресу, а не запись или готовый двусторонний протокол ARM↔FPGA. [Технический журнал](docs/EBAZ-20_SYSTEM_INVENTORY_RU.md).
+У каждого каталога есть свой `README.md`, который объясняет его назначение и актуальный статус.
 
-## Практическая статья: AXI и ARM ↔ FPGA
+## Безопасность, права и использование материалов
 
-[**AXI в Xilinx Zynq-7000: от программы ARM до памяти FPGA — теория, адресация, протокол и EBAZ-20**](docs/EBAZ-20_AXI_ARM_FPGA_PRACTICAL_RU.md).
+**Не меняйте содержимое NAND, U-Boot environment, загрузочные перемычки или FPGA bitstream, пока нет проверенного резервного копирования и UART/JTAG recovery.** Ethernet работает через PL; загрузка чужого FPGA-проекта может отключить доступ по сети. Не подключайте 5/12 В к логическим линиям FPGA без изучения схемы.
 
-Статья разделяет AXI4, AXI4-Lite и AXI4-Stream, показывает каналы чтения, схему PS→PL, реальную адресную карту BRAM, `mmap()`-чтение 128 байт и план следующей лаборатории с настоящим двусторонним протоколом. Подтверждённые измерения отделены от проектных предположений.
+Заводские образы, бинарный bitstream, приватные SSH-ключи и персональные конфигурации **не публикуются**. Приведённые сторонние проекты и XDC — справочные источники, а не автоматически разрешённый к копированию код. **У репозитория пока нет общей лицензии LICENSE**; смотрите лицензионные заголовки конкретных файлов и условия первоисточников.
 
-## EBAZ-20 — ревизия загрузки, служб и Cortex-A9
-
-[**Открыт аудит BootROM/FSBL → U-Boot → Linux → SysVinit → сетевые службы и два Cortex-A9**](docs/EBAZ-20_BOOT_INIT_CPU_AUDIT_RU.md). Сначала снимаем фактическую карту автозагрузки, содержимое `/etc/inittab`, `rcS.d`, `rc5.d`, список процессов, CPU online и mountpoints. Изменения NAND/bitstream и отключение сервисов пока запрещены. Приоритеты: наложенный 64-KiB tmpfs на `/dev`, Ethernet PHY/DHCP, пустой `inetd`, а также проверка SMP/драйверов.
-
-## EBAZ-20 — синхронизация программных часов по SNTP
-
-[**Клиент SNTP для Cortex-A9: исходный код, проверка ответа, установка системного времени (только по `--apply`)**](software/ebaz20-sntp/README.md). Аппаратный RTC на плате пока не подтверждён; системное время может быть установлено после получения сети. Локальная сборка/имитационные тесты PASS, кросс-сборка и испытание на EBAZ4205 ещё **PENDING**. Автозагрузка не менялась.
-
-
-
-### EBAZ-20 — автосинхронизация системных часов: PASS
-
-**`EBAZ20_SNTP_AUTOBOOT_PASS` (07.11.2026):** после полной загрузки из NAND PetaLinux 2016.4 самостоятельно дождалась DHCP, получила время от SNTP-сервера и установила системные часы Linux. Для этого аппаратный RTC не требуется при доступной сети. Доказательство и ограничения — в [журнале EBAZ-20.37](docs/EBAZ-20_BOOT_INIT_CPU_AUDIT_RU.md); исходники — [software/ebaz20-sntp](software/ebaz20-sntp/README.md).
-
-## EBAZ-21 — внешние проекты, схемы, порты и FPGA
-
-- [Атлас проектов GitHub: оценка, состав, лицензии, что заимствовать и улучшить](docs/EBAZ-21_COMMUNITY_PROJECTS_REVIEW_RU.md).
-- [Аппаратная карта: схемы, физические порты, разводка и подтверждённая штатная FPGA](docs/EBAZ-21_BOARD_PINOUT_AND_FACTORY_FPGA_RU.md).
-- [CSV-таблица 42 сигнальных контактов DATA1/DATA2/DATA3](hardware/EBAZ4205_DATA_CONNECTORS_PINMAP.csv) — **сторонние XDC, до подключения проверить именно нашу ревизию**.
-
-Важный уже выполненный этап: EBAZ-20 ARM BRAM-reader прочитал 32 слова (128 байт) с адреса `0x40000000`, PASS. Программа не осуществляла запись. Для штатного bitstream и полного списка задействованных выводов требуется дальнейшая верификация. Не заменять конфигурацию PL без сохранения Ethernet EMIO и запасного UART/JTAG-доступа.
-
-## EBAZ-22 — Commercial product / товарный комплект
-
-[**Коммерческое ТЗ: подготовка бывшей майнинговой EBAZ4205 для перепродажи с платой расширения, себестоимость, критерии готовности, проверка спроса**](docs/EBAZ-22_COMMERCIAL_PRODUCT_BRIEF_RU.md).
-
-Приоритет проекта — воспроизводимая подготовка комплектов и реальные продажи, а не самостоятельное исследование. Целевой закупочный ориентир 3 000 ₽, розница 4 500–6 000 ₽; расчёты не включают все накладные расходы. Каждую новую лабораторию оцениваем по добавленной покупателю функции, снижению брака и времени на подготовку.
+[Как участвовать и сообщать ошибки](CONTRIBUTING.md) · [Все документы](docs/README.md) · [Исходный репозиторий EBAZ4205](https://github.com/AIDevelopersMonster/EBAZ4205)
