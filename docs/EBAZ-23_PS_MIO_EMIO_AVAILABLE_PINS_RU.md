@@ -232,3 +232,33 @@ echo '=== EMIO BANK2 PIN READBACK ==='
 Отдельно от управления вентилятором, **питание** fan connector служило цепью питания вентиляторов на майнере. [xjtuecho README](https://github.com/xjtuecho/EBAZ4205) предупреждает: для обратного питания самой платы через J3/J5 нужен D24, обычно отсутствующий; нельзя автоматически считать J3/J5 входом питания платы. Разъём J4 также упомянут в схемах питания, но управляющие SPEED/PWM линии в XDC обозначены только для **J3 и J5**.
 
 **На нашей плате** пока НЕ проводилась проверка физической обвязки fan header, не подключались вентиляторы и не снимались сигналы. Статус `FAN_J3_J5_PINMAP_REFERENCE_VERIFIED_BY_TWO_XDC`, `FAN_CONTROL_HARDWARE_PENDING`. Нельзя обещать PWM из Linux 4.6 со штатным bitstream: нет известной карты регистров штатного блока fan.
+
+
+## 2026-11-07 — SDIO-0: тест носителя при сохранении NAND boot
+
+**Статус нашего EBAZ4205 до теста:** `e0100000.sdhci` уже зарегистрирован, `mmc0` есть в `/sys/class/mmc_host`, в прошлой диагностике `/dev/mmcblk*` не появлялся; владелец сообщил о физическом слоте microSD. **Наличие SD host не означает успешного чтения носителя.**
+
+**Сверка оригинальных и альтернативных реализаций**:
+- [Mainline zynq-ebaz4205.dts](https://github.com/torvalds/linux/blob/master/arch/arm/boot/dts/xilinx/zynq-ebaz4205.dts): `&sdhci0 status="okay"; disable-wp;` и `sdio0_2_grp`, `gpio0_34_grp` как `sdio0_cd` с pull-up.
+- [KeitetsuWorks custom PetaLinux DTS](https://github.com/KeitetsuWorks/EBAZ4205/blob/master/linux/ebaz4205/project-spec/meta-user/recipes-bsp/device-tree/files/ebaz4205.dtsi): `&sdhci0 status="okay"`, `xlnx,has-cd=<1>`, `xlnx,has-power=<0>`, `xlnx,has-wp=<0>` (только их конфигурация).
+- [har-in-air EBAZ4205_PETALINUX](https://github.com/har-in-air/EBAZ4205_PETALINUX): установлен U7, SD boot с отдельным boot resistor switch и Linux EXT4/FAT32. Не является доказательством чтения SD в нашей штатной NAND-системе.
+- [xjtuecho README](https://github.com/xjtuecho/EBAZ4205): обычно U7 отсутствует; `R2584` — NAND boot, `R2577` — SD boot; **перестановка относится к BootROM и не требуется для чтения SD как обычного накопителя из уже загруженного Linux**.
+- [AMD/Xilinx ZC702 Linux](https://xilinx-wiki.atlassian.net/wiki/spaces/A/pages/18842364/Zc702%2BLinux): SD видна системе через MMC и может монтироваться как накопитель, независимо от способа начальной загрузки при правильных pinmux и питании.
+- [UG585 BootROM Steps](https://docs.amd.com/r/en-US/ug585-zynq-7000-SoC-TRM/BootROM-Steps): SDIO0 физически использует MIO40..45, а на EBAZ4205 card detect MIO34 по mainline DTS. PL для этих линий не нужен.
+
+**Протокол первого теста: только обнаружение, без записи на карту, смены NAND-strap или перезагрузки.**
+
+1. Вставить известную рабочую microSD (желательно 4–32 ГБ FAT32, без ценных данных). До вставки при включённой плате проверить отсутствие `mmcblk` и сохранить строки `dmesg` для сравнения.
+2. Через несколько секунд после вставки выполнить:
+```sh
+echo '=== SD DETECTION ==='
+dmesg | grep -i -E 'mmc|sdhci|card|crc|timeout|voltage' | tail -n 40
+echo '=== BLOCK DEVICES ==='
+cat /proc/partitions
+ls -l /dev/mmcblk* 2>&1
+echo '=== MMC DEVICES ==='
+ls -l /sys/bus/mmc/devices/
+```
+3. При наличии `mmcblk0` — `SD_ENUMERATION_PASS`; только после этого read-only mount на `/tmp/sd` при подтверждённом FAT32 разделе, без `mkfs`, `dd`, `fsck` или каких-либо команд записи. Если появится `mmc0:` но не `mmcblk0`, расследовать DT CD/pinctrl, питание U7, резисторы и работу драйвера; не считать это доказательством необходимости перепайки boot-mode.
+
+**Важное разграничение:** стандартный MMC-хост Linux распознаёт сам носитель независимо от ФС; FAT32 помогает при последующем монтировании, но НЕ требуется для обнаружения `/dev/mmcblk0`. Никакого аппаратного PASS до вывода реальной платы.
