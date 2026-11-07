@@ -358,3 +358,24 @@ EBAZ20_SNTP_DRY_RUN_PASS (clock unchanged)
 **Result:** EBAZ20_SNTP_QUERY_PASS and EBAZ20_SNTP_DRY_RUN_PASS on **real XC7Z010 Cortex-A9 Linux 4.6.0**; IPv4/UDP123 reachability and server SNTPv4 response validation are confirmed. One-off server time appears plausible (local 2026-11-07). Explicit `--apply` has **not** been run, so no kernel clock-setting PASS and no post-reboot persistence or startup automation has been shown. Client is still stored on RAM-backed `/dev/ebaz20-ram` and will disappear after reboot. Earlier WSL build hash was `e5b2f839223f9ac8e42e314bb1d984259248260837e5eb01d787e775e998d3eb`; a post-transfer on-board SHA256 verification was requested but not provided in this message, so matching hashes remain PENDING.
 
 **Next gate:** confirm on-board SHA256, then run `/dev/ebaz20-ram/ebaz20-sntp --apply` and `date -u`, explicitly measuring changed CLOCK_REALTIME. Time setting changes RAM/system clock only, not RTC, NAND or Device Tree. Only after confirmed real-board apply PASS design persistent executable deployment and bounded post-DHCP network-time startup, with rollback and no interference in networking or SSH. Do not claim authenticated NTP or security-grade time source: this is single-server unauthenticated SNTP.
+
+## EBAZ-20.32 — SNTP kernel clock apply hardware PASS
+
+**Real-board EBAZ4205 UART proof (2026-11-07), not simulated:**
+
+~~~text
+sha256sum /dev/ebaz20-ram/ebaz20-sntp
+e5b2f839223f9ac8e42e314bb1d984259248260837e5eb01d787e775e998d3eb  /dev/ebaz20-ram/ebaz20-sntp
+date -u
+Fri Jul 23 22:04:16 UTC 2010
+/dev/ebaz20-ram/ebaz20-sntp --apply
+EBAZ20_SNTP_QUERY_PASS server=162.159.200.1 stratum=3 rtt_ms=5.2
+NTP estimated UTC: 2026-11-07 07:41:12 UTC
+EBAZ20_SNTP_CLOCK_SET_PASS
+date -u
+Sat Nov  7 07:41:13 UTC 2026
+~~~
+
+**Verdict:** Static ARM ELF hash matches host build; real EBAZ20_SNTP_QUERY_PASS and EBAZ20_SNTP_CLOCK_SET_PASS. Real Linux CLOCK_REALTIME was corrected from 2010 to 2026 without external RTC. Only RAM clock changed, no RTC/NAND/FPGA/DT update performed at this milestone. Source binary remains on RAM tmpfs and will vanish at reboot. System time is expected to be invalid again after boot until persistent SNTP startup added. The client is a one-shot query and does not continuously discipline the clock.
+
+**Next stage (not yet verified):** persistent binary installation with hash/free-space checks; standalone reversible SysV service that retries only after eth0 DHCP has obtained IPv4 and then runs one-shot `--apply` without blocking boot. Must examine actual SysV runlevel ordering and DHCP scripts before enabling; retain UART, SSH, network, and rollback. Never infer autonomous startup PASS from one manual SNTP setting.
