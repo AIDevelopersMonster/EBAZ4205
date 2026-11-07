@@ -13,7 +13,7 @@ DATA1,17,F20,35,HDMI differential in daughterboard,REFERENCE_NOT_TESTED_ON_OUR_B
 DATA1,18,E19,35,LED daughterboard,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
 DATA1,19,F19,35,HDMI differential in daughterboard,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
 DATA1,20,K17,35,LED daughterboard,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
-DATA2,4,G20,35,unassigned in cited examples,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
+DATA2,5,G20,35,unassigned in cited examples,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
 DATA2,6,J18,35,unassigned in cited examples,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
 DATA2,7,G19,35,unassigned in cited examples,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
 DATA2,8,H20,35,unassigned in cited examples,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
