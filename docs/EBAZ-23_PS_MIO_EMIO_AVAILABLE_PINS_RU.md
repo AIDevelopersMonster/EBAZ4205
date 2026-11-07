@@ -286,3 +286,32 @@ blkid /dev/mmcblk0p1 2>/dev/null || true
 cat /proc/filesystems | grep -E 'vfat|ext4|exfat'
 ```
 Mount only after FS identification, using a single `/tmp/sd` mountpoint with safe read-only flags. For ext4, use `ro,noload` to prevent journal replay; do not use fsck/mkfs/partition changes. For FAT32, `mount -t vfat -o ro /dev/mmcblk0p1 /tmp/sd`. If `mdev` did not create nodes although kernel enumerates a card, investigate `/dev` before mount. Do not infer card write functionality until independently tested on a disposable card.
+
+
+## 2026-11-07 — реальная карта SDHC: обнаружен раздел VFAT
+
+Реальный вывод на нашей EBAZ4205 (NAND Linux 4.6):
+
+```text
+/dev/mmcblk0       block 179,0
+/dev/mmcblk0p1     block 179,1
+/dev/mmcblk0p1: UUID="751F-7A24" TYPE="vfat"
+cat /proc/filesystems | grep -E 'vfat|ext4|exfat'
+        ext4
+        vfat
+```
+
+Совместно с предыдущими загрузочными сообщениями `mmc0: new high speed SDHC card at address aaaa`, `mmcblk0: mmc0:aaaa SC16G 14.8 GiB`, `mmcblk0: p1` — **`EBAZ23_SDHC_VFAT_DETECTED_PASS`**: обнаружены физический носитель, таблица разделов и файловая система VFAT с UUID `751F-7A24`.
+
+**Важное ограничение:** распознавание типа ФС посредством `blkid` не означает, что файловая система уже успешно смонтирована и прочитаны пользовательские файлы; самостоятельные статусы `SD_MOUNT_RO_PASS` и `SD_FILE_READ_PASS` ожидают результата.
+
+Следующий безопасный тест в volatile `/tmp`, без изменения NAND/FPGA, без записи на SD:
+
+```sh
+mkdir -p /tmp/sd
+mount -t vfat -o ro /dev/mmcblk0p1 /tmp/sd
+ls -lah /tmp/sd
+df -h /tmp/sd
+```
+
+Если требуется закончить сеанс: `umount /tmp/sd`. Не использовать `mkfs`, `fsck`, `dd`, `mount -o rw` и не делать записей, пока не завершена верификация чтения и не получено подтверждение безопасного тестового носителя.
