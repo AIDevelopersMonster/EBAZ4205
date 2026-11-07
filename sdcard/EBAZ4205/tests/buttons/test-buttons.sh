@@ -56,10 +56,27 @@ if [ "$base" != 906 ]; then
     echo "SAFETY STOP: unexpected GPIO base $base" >&2
     exit 1
 fi
-if ! sleep 0.1 2>/dev/null; then
-    echo "ERROR: this BusyBox sleep does not support fractional seconds" >&2
-    exit 1
+# BusyBox 1.24.1 may reject fractions in "sleep". Pick a safe delay.
+# Every option is checked before exporting GPIO; never use a CPU-heavy spin.
+if sleep 0.1 2>/dev/null; then
+    delay_mode=fractional
+elif command -v usleep >/dev/null 2>&1 && usleep 100000 2>/dev/null; then
+    delay_mode=usleep
+elif command -v busybox >/dev/null 2>&1 && busybox usleep 100000 2>/dev/null; then
+    delay_mode=busybox_usleep
+else
+    delay_mode=seconds
+    echo 'WARN: only integer-second sleep is available; hold each button for 3 seconds' >&2
 fi
+
+pause_between_samples() {
+    case "$delay_mode" in
+        fractional) sleep 0.1 ;;
+        usleep) usleep 100000 ;;
+        busybox_usleep) busybox usleep 100000 ;;
+        seconds) sleep 1 ;;
+    esac
+}
 
 prepare "$GPIO_SW2" || exit 1
 prepare "$GPIO_SW3" || exit 1
@@ -105,5 +122,5 @@ while :; do
         if [ "$stable3" = 0 ]; then echo 'Нажата кнопка SW3'; fi
     fi
 
-    sleep 0.1
+    pause_between_samples
 done
