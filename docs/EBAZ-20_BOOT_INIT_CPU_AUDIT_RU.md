@@ -379,3 +379,13 @@ Sat Nov  7 07:41:13 UTC 2026
 **Verdict:** Static ARM ELF hash matches host build; real EBAZ20_SNTP_QUERY_PASS and EBAZ20_SNTP_CLOCK_SET_PASS. Real Linux CLOCK_REALTIME was corrected from 2010 to 2026 without external RTC. Only RAM clock changed, no RTC/NAND/FPGA/DT update performed at this milestone. Source binary remains on RAM tmpfs and will vanish at reboot. System time is expected to be invalid again after boot until persistent SNTP startup added. The client is a one-shot query and does not continuously discipline the clock.
 
 **Next stage (not yet verified):** persistent binary installation with hash/free-space checks; standalone reversible SysV service that retries only after eth0 DHCP has obtained IPv4 and then runs one-shot `--apply` without blocking boot. Must examine actual SysV runlevel ordering and DHCP scripts before enabling; retain UART, SSH, network, and rollback. Never infer autonomous startup PASS from one manual SNTP setting.
+
+## EBAZ-20.33 — SNTP persistent-start preparation, not yet applied
+
+Board capture: `df -h /` reports `/dev/root 64.0M total, 14.4M used, 49.6M available (22%)`; verified SNTP binary at `/dev/ebaz20-ram/ebaz20-sntp` is 512.8 KiB. `/etc/network/interfaces` has `auto lo`, `iface lo inet loopback`, `auto eth0`, `iface eth0 inet dhcp`. Runlevel 5 has `S01networking -> ../init.d/networking`.
+
+**Prepared**, not installed: standalone BusyBox ash SysVinit script at [software/ebaz20-sntp/ebaz20-sntp-init](../software/ebaz20-sntp/ebaz20-sntp-init). Runs a bounded nonblocking, one-shot SNTP bootstrap in background, waiting for carrier+IPv4+default route. 24 attempts with 10s gaps, command `/usr/local/sbin/ebaz20-sntp --server 162.159.200.1 --apply`. State/log under volatile `/run`; does not write logs to NAND. Startup link `S30ebaz20-sntp` is deliberately NOT created yet.
+
+Preinstallation gate: first copy the *already verified* binary from the dedicated RAM-backed mount into `/usr/local/sbin/` on JFFS2, confirm identical SHA256; then transfer the init script from WSL2 using existing working SSH key, run `sh -n`, manually start and inspect `/run` state/log. Only after PASS create `/etc/rc5.d/S30ebaz20-sntp`, then validate on fresh reboot. Rollback simply removes that S30 symlink, preserving essential networking, mdev, Dropbear, existing backup. See complete commands in [SNTP README](../software/ebaz20-sntp/README.md).
+
+**Current status: STAGED_INSTALL_PENDING, MANUAL_SERVICE_TEST_PENDING, BOOT_AUTOSYNC_PENDING.** Do not claim automated time synchronization works before these tests. Kernel system clock manual set PASS remains unchanged.
