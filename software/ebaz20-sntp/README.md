@@ -122,3 +122,10 @@ rm -f /etc/rc5.d/S30ebaz20-sntp
 Remove only this link (not /etc/init.d script or the binary). Full reboot verification: inspect `/run/ebaz20-sntp.state`, `/run/ebaz20-sntp.log`, `date -u`, Ethernet IP/route, and Dropbear SSH. `S30` follows networking and dropbear but its child starts in the background, so it will not hold up the SysVinit sequence. Leave `networking`, `udhcpc`, `dropbear`, `mdev` unchanged.
 
 **Safety limits:** the script does not continuously discipline clock drift, lacks NTP authentication and depends on public UDP/123. Changes are written to JFFS2 for persistence; avoid mass edits and monitor the JFFS2 summary warning previously observed. Do not claim BOOT_AUTOSYNC_PASS until a real post-reboot verification.
+
+
+## Verified autonomous NAND boot: EBAZ-20.37
+
+**HARDWARE PASS — 2026-11-07.** The static ARM32 program was installed at `/usr/local/sbin/ebaz20-sntp` on JFFS2 with verified SHA256 `e5b2f839223f9ac8e42e314bb1d984259248260837e5eb01d787e775e998d3eb`. The `/etc/init.d/ebaz20-sntp` script was syntax checked, manually tested PASS, and linked from `/etc/rc5.d/S30ebaz20-sntp`. After an actual EBAZ4205 NAND reboot, volatile `/run/ebaz20-sntp.log` showed `network ready, attempt=1`, `EBAZ20_SNTP_QUERY_PASS` (Cloudflare IPv4 `162.159.200.1`, stratum 3, RTT 5.0ms) and `EBAZ20_SNTP_CLOCK_SET_PASS` at `2026-11-07 07:57:36 UTC`. Service `status` returned `PASS` and `date -u` showed `Sat Nov 7 07:58:22 UTC 2026`. IPv4 `192.168.1.77` remained configured on eth0.
+
+**Status:** `EBAZ20_SNTP_AUTOBOOT_PASS`. This validates unattended one-shot clock bootstrapping with a functioning network; it does not fix optional physical RTC, provide authenticated time, or continuously discipline clock skew. If the WAN/NTP service is unavailable during the bounded retries, the system clock can stay incorrect. Preserve `/etc/rc5.d/S30ebaz20-sntp` for autonomous use; rollback (if needed) is removing that symlink only.
