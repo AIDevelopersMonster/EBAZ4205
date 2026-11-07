@@ -314,3 +314,16 @@ date -u
 7. A PCF8563 node at address `0x51` also exists in reference Xilinx Zynq ZC706 board DTS *behind an I2C multiplexer* (not proof of direct source copied to EBAZ board): https://github.com/Xilinx/device-tree-xlnx/blob/master/device_tree/data/kernel_dtsi/2017.2/BOARD/zc706.dtsi. This reinforces the need to treat generic 2017-era device-tree peripherals skeptically.
 
 **Conclusion:** Hardware RTC on this user's EBAZ4205 is **UNCONFIRMED**. A mismatch between current PCF8563-compatible Device Tree and community-proposed PCF8523 footprint is a **plausible, grounded hypothesis**, not a proved board-specific identification. Do not change `rtc@51` to `rtc@68` blindly. Safest next tests: inspect actual PCB X3/Y2 via clear close-up/visual inspection, read current DT compatible and I2C sysfs name, check installed time-sync clients; then design NTP-based Linux system-time setup independent of optional RTC. Avoid raw I2C reads/writes/scans, driver unbind/bind, and rewriting NAND/DT in this phase.
+
+## EBAZ-20.28 — RTC DT identifier confirmed; only rdate client installed
+
+User board read-only output:
+
+- `/proc/device-tree/amba/i2c@e0004000/rtc@51/compatible` contains `nxp,pcf8563`.
+- `/sys/bus/i2c/devices/0-0051/name` contains `pcf8563`.
+- These two values are **the software identification generated from the Device Tree**, not independent proof that the RTC is physically populated. The previously observed I2C driver probe failed, and the Linux RTC class is empty.
+- `which ntpd ntpdate rdate` reported only `/usr/sbin/rdate`. `busybox --list` reported `rdate` only. No ntpd/ntpdate appears in the searched paths or BusyBox applets.
+- **Important:** rdate is not an NTP client; it typically uses the RFC 868 Time Protocol (port 37). Do not point rdate at an arbitrary public NTP server and expect success. Before use, inspect `/usr/sbin/rdate --help` or `rdate -h` on target and identify a server supporting Time Protocol; if unavailable, prefer proper NTP client delivered as a tested static ARM binary or local LAN time service under a separately approved change procedure.
+- A working Ethernet route does not establish correct DNS or Internet NTP/Time Protocol availability. No writes to NAND, Device Tree or I2C made.
+
+Next read-only gate: `/usr/sbin/rdate --help 2>&1`, `ls -l /usr/sbin/rdate`, `date -u`, `cat /etc/resolv.conf`, `cat /proc/net/route` (network configuration only, no credentials), and inspect availability of `wget`/`nc` before choosing a network time strategy. An NTP client should synchronize clock **after** network/DHCP readiness and must not be mistaken for physical RTC repair.
