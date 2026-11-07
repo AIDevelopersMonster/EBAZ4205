@@ -4,6 +4,13 @@
 
 **Дата исследования:** 2026-11-07. **Наш репозиторий:** https://github.com/AIDevelopersMonster/EBAZ4205
 
+## Два выбранных источника для нашего переходника
+
+1. [tomorrow56/EBAZ4205_tutorial](https://github.com/tomorrow56/EBAZ4205_tutorial) — архитектура последовательных лабораторий Vivado/Vitis, PS/PL, AXI и HDMI.
+2. [Alex-Electron/ZX_BulbuLator](https://github.com/Alex-Electron/ZX_BulbuLator) — **проверены файлы первоисточника Step 0–7**: LED/KEY pinout, family-B HDMI, STARTUPE2, видеогенерация, управление через AXI. [Подробный разбор и применимость](ZX_BULBULATOR_REFERENCE_RU.md).
+
+**Оба проекта — REFERENCE**, а не результат измерения нашей платы 660269A_Y13.
+
 ## Принцип оценки
 
 Баллы 1–5 — инженерная *полезность для нашего уже работающего экземпляра* (Linux 4.6.0-xilinx, NAND, SSH, проверенные UARTLite и чтение AXI BRAM), а не популярность GitHub. Наличие проекта не доказывает совместимость с каждой ревизией платы. При любом заимствовании проверять лицензию, версию Vivado, питание, тактирование и Ethernet через EMIO.
