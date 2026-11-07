@@ -1,0 +1,10 @@
+build/
+*.jou
+*.log
+*.bit
+*.bit.bin
+*.dcp
+*.rpt
+*.wdb
+*.vcd
+*.str
