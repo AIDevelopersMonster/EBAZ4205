@@ -419,3 +419,14 @@ date -u
 ~~~
 
 Expect `PASS`, `EBAZ20_SNTP_CLOCK_SET_PASS`, accurate time. If `STARTED` or logs indicate retry, do not immediately classify as fail: worker can retry up to 24 times with 10-second sleeps; inspect log/status later. **Do not create S30 link before manual PASS.**
+
+## EBAZ-20.36 — manual SNTP SysV service PASS
+
+Actual user UART log from target EBAZ4205:
+- `/etc/init.d/ebaz20-sntp start` printed `SNTP: background clock synchronization scheduled`.
+- After `sleep 15`, `/etc/init.d/ebaz20-sntp status` returned **PASS**.
+- `/run/ebaz20-sntp.log` contains: `worker started; host=162.159.200.1 max_attempts=24`; `network ready, attempt=1`; `EBAZ20_SNTP_QUERY_PASS server=162.159.200.1 stratum=3 rtt_ms=4.9`; `NTP estimated UTC: 2026-11-07 07:52:51 UTC`; `EBAZ20_SNTP_CLOCK_SET_PASS`; `Sat Nov  7 07:52:51 UTC 2026`; `SNTP: system clock set successfully`.
+- Subsequent `date -u`: `Sat Nov  7 07:53:09 UTC 2026`.
+- **SNTP_SERVICE_MANUAL_PASS:** script works in background, confirms eth0 IPv4/default route, performs valid SNTP exchange and sets kernel clock on real target; no repeated attempts needed.
+- `/run` already proven tmpfs and binary in persistent JFFS2 SHA256 verified. **Autostart S30 link and actual reboot test still PENDING**.
+- Next one-change gate: confirm no existing `/etc/rc5.d/S30ebaz20-sntp`; create `ln -s ../init.d/ebaz20-sntp /etc/rc5.d/S30ebaz20-sntp`; inspect link; with UART rescue ready reboot once and verify **fresh** `/run/ebaz20-sntp.log`, status PASS and 2026 `date -u`, DHCP/route and Dropbear. Do not infer automatic boot PASS from manual success. Rollback via `rm /etc/rc5.d/S30ebaz20-sntp` only.
