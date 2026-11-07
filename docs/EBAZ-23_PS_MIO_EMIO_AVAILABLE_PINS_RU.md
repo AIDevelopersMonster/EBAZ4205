@@ -75,3 +75,31 @@ ls /sys/kernel/debug/pinctrl 2>/dev/null || true
 Номера GPIO в **нашей работающей Linux с gpiochip base 906**: MIO20 = 926, MIO32 = 938, MIO26 = 932, MIO27 = 933. Не выставлять направление output и не экспортировать выводы загрузки/NAND без отдельного анализа. Наоборот, **сначала** читать `/sys/kernel/debug/gpio` (если debugfs смонтирован), `/sys/class/gpio/gpiochip906` и `/proc/device-tree` без записи.
 
 Для Ethernet через PL: штатная Ethernet PHY работает, критические PL I/O заняты. Реальные свободные сигналы DATA (42 по чужой XDC) пока надо считать **аппаратно доступными по схеме, но не гарантированно свободными в текущем bitstream**.
+
+## 2026-11-07 — сверка с ПЕРВОИСТОЧНИКАМИ (после подтверждения пользователем наличия кнопок и держателя SD)
+
+**Новый первичный источник:** [mainline Linux Device Tree for EBAZ4205](https://github.com/torvalds/linux/blob/master/arch/arm/boot/dts/xilinx/zynq-ebaz4205.dts) — явные `gpio0_20_grp` и `gpio0_32_grp` (оба для PS GPIO), `sdio0_2_grp`, `gpio0_34_grp` для card detect, `&sdhci0 status = "okay"`. Это описание для Linux mainline, **не обязательно точный DTB заводского Linux 4.6**. В mainline DTS нет обязательного `gpio-keys`-устройства; настройки pinmux сами по себе не означают появление событий в `/dev/input`.
+
+**Кнопки:** [mwalle pinout](https://gist.github.com/mwalle/d8291e241075d82d1d420afa9302bd91) определяет SW2 = PS MIO20 (A17), SW3 = PS MIO32 (A14); наш gpiochip `base=906`, поэтому Linux GPIO 926/938 (пока НЕ проверены непосредственно в пользовательском вводе). [KeitetsuWorks GPIO demo](https://github.com/KeitetsuWorks/EBAZ4205/blob/master/linux/ebaz4205/project-spec/meta-user/recipes-apps/gpio-demo/README.md) **реально демонстрирует** работающую пару S2/S3 в их PetaLinux: S2 замедляет мигание зелёного LED6G, S3 ускоряет, через `leds-gpio` и `gpio-keys` и исполняемый `gpio-demo`. Их код распространяется под MIT (см. LICENSE), потенциально можно заимствовать с атрибуцией и адаптацией под наше ядро 4.6.
+
+**Возможное ограничение комплектации:** [Hardware Build States wiki](https://github-wiki-see.page/m/xjtuecho/EBAZ4205/wiki/Hardware-Build-States.-What-you-may-or-not-have-fitted-on-your-board.) говорит о возможном отсутствии обвязки S3 (`R2649`); KeitetsuWorks пишет о необходимости S3, `C2410`, `R2641A` в их ревизии. Эти номера не объединять в одну безусловную инструкцию. Наш пользователь подтвердил физическое наличие двух кнопок; электрическую связь ещё предстоит проверить.
+
+**microSD:** [mwalle](https://gist.github.com/mwalle/d8291e241075d82d1d420afa9302bd91) фиксирует PS MIO40=CLK, 41=CMD, 42..45=DAT[0..3], 34=CD#. Наш Linux имеет `e0100000.sdhci`. Пользователь сообщает о физическом держателе SD. **Работа SD в NAND-boot пока не проверена**; проверить `/sys/class/mmc_host`, `/dev/mmcblk*`, dmesg без модификаций. Для самостоятельной загрузки с SD [xjtuecho](https://github.com/xjtuecho/EBAZ4205) указывает перенести boot-strap резистор с R2584 (NAND) на R2577 (SD); [KeitetsuWorks](https://github.com/KeitetsuWorks/EBAZ4205) требует R2577 и U7. Ничего не перепаивать до резервной копии и плана повторяемости товарной партии.
+
+**DDR3:** [xjtuecho README](https://github.com/xjtuecho/EBAZ4205) и [reconstructed KiCad Mem_Zynq](https://github.com/xjtuecho/EBAZ4205/blob/master/HW/ebaz4205/kicad/Mem_Zynq.kicad_sch) указывают одну внешнюю DDR3/DDR3L IC, эталонный компонент Micron MT41K128M16JT-125 и 256 MB. Контроллер DDR является блоком **PS**, а сама оперативная память физически расположена **в отдельной микросхеме** вне кристалла Zynq, подключённой специальной DDR-шиной (не MIO GPIO). Код Linux управляет RAM через PS DDR controller; PL может адресовать DDR посредством AXI PS↔PL при соответствующем дизайне. Конкретную маркировку микросхемы на нашем экземпляре ещё не снимали. Наш `MemTotal=252032 kB` согласуется с номинальным 256 МиБ (часть RAM зарезервирована для ядра/оборудования).
+
+**Коммерческая ценность**: готовая демо-пара «две кнопки меняют мигание LED» уже реализована под EBAZ4205, не нужна новая FPGA RTL; демонстрация чтения microSD под **штатной NAND-системой** потенциально особенно выгодна без перепайки загрузочных резисторов. Не обещать обе функции в карточке продажи, пока на нашем экземпляре не отмечены тесты PASS.
+
+Только-чтение для следующего шага (никакого `gpio export` и изменений pinmux):
+```sh
+echo '=== INPUT DEVICES ==='
+cat /proc/bus/input/devices
+echo '=== MMC HOST ==='
+ls -l /sys/class/mmc_host/ 2>/dev/null
+echo '=== DETECTED MEDIA ==='
+ls -l /dev/mmcblk* 2>/dev/null
+echo '=== SD LOG ==='
+dmesg | grep -i -E 'mmc|sdhci|card detect'
+echo '=== GPIO DEBUG ==='
+cat /sys/kernel/debug/gpio 2>/dev/null
+```
