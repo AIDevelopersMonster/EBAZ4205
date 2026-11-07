@@ -327,3 +327,7 @@ User board read-only output:
 - A working Ethernet route does not establish correct DNS or Internet NTP/Time Protocol availability. No writes to NAND, Device Tree or I2C made.
 
 Next read-only gate: `/usr/sbin/rdate --help 2>&1`, `ls -l /usr/sbin/rdate`, `date -u`, `cat /etc/resolv.conf`, `cat /proc/net/route` (network configuration only, no credentials), and inspect availability of `wget`/`nc` before choosing a network time strategy. An NTP client should synchronize clock **after** network/DHCP readiness and must not be mistaken for physical RTC repair.
+
+## EBAZ-20.29 — SNTP instead of external RTC
+
+User confirmed physical RTC installation is not currently possible because a connector/footprint has not been located. Software clock is still available but boots at 2010. Only available BusyBox `rdate` is RFC868 protocol (not NTP). For reliable post-DHCP time bootstrapping, created minimal one-shot SNTPv4 client at [software/ebaz20-sntp](../software/ebaz20-sntp/README.md) using IPv4 UDP port 123 and numeric Cloudflare server `162.159.200.1`, avoiding DNS. Query-only by default, optional explicit `--apply` calls `clock_settime`. Mock server tests valid response and rejections PASS on host, but **cross compilation and board runtime remain unverified**. No new startup scripts installed and no NAND, FPGA, RTC, DT writes. Await ARM `make check` and then read-only SNTP query before applying clock time; once hardware PASS, design bounded retry startup after DHCP lease readiness.
