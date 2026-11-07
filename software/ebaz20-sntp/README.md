@@ -1,5 +1,7 @@
 # EBAZ-20: SNTP bootstrap for Zynq Linux
 
+> **Актуализация справочника (07.11.2026):** После первоначального host mock клиент SNTP и его автоприменение **были проверены на реальной NAND Linux**; `EBAZ20_SNTP_AUTOBOOT_PASS` зафиксирован в [журнале загрузки](../../docs/EBAZ-20_BOOT_INIT_CPU_AUDIT_RU.md). Начальный заголовок о PENDING в исходном хронологическом тексте ниже устарел.
+
 **Status:** host build and simulated UDP tests PASS; **ARM cross-build and EBAZ4205 hardware tests PENDING**. Nothing installed into NAND or Linux init.
 
 Our board's `nxp,pcf8563` RTC in Device Tree fails probe, so Linux boots with an invalid clock (2010). The kernel system clock can be set via NTP without an external RTC. The board only has `rdate`, which uses RFC868 Time Protocol, **not NTP**.
