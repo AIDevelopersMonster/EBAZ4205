@@ -331,3 +331,15 @@ Next read-only gate: `/usr/sbin/rdate --help 2>&1`, `ls -l /usr/sbin/rdate`, `da
 ## EBAZ-20.29 — SNTP instead of external RTC
 
 User confirmed physical RTC installation is not currently possible because a connector/footprint has not been located. Software clock is still available but boots at 2010. Only available BusyBox `rdate` is RFC868 protocol (not NTP). For reliable post-DHCP time bootstrapping, created minimal one-shot SNTPv4 client at [software/ebaz20-sntp](../software/ebaz20-sntp/README.md) using IPv4 UDP port 123 and numeric Cloudflare server `162.159.200.1`, avoiding DNS. Query-only by default, optional explicit `--apply` calls `clock_settime`. Mock server tests valid response and rejections PASS on host, but **cross compilation and board runtime remain unverified**. No new startup scripts installed and no NAND, FPGA, RTC, DT writes. Await ARM `make check` and then read-only SNTP query before applying clock time; once hardware PASS, design bounded retry startup after DHCP lease readiness.
+
+## EBAZ-20.30 — ARM SNTP cross-build PASS
+
+User completed the WSL2 arm-linux-gnueabihf static build and `check_elf.sh`. The output showed:
+
+~~~text
+sh ./check_elf.sh "build/ebaz20-sntp" "arm-linux-gnueabihf-readelf"
+e5b2f839223f9ac8e42e314bb1d984259248260837e5eb01d787e775e998d3eb  build/ebaz20-sntp
+EBAZ20_SNTP_ARM_STATIC_ELF_CHECK_PASS
+~~~
+
+Status: EBAZ20_SNTP_ARM_STATIC_ELF_CHECK_PASS, ELF cross-build check passed. This is NOT yet proof that the binary executes on EBAZ4205 or can receive NTP responses. Next: create/reuse private 8 MiB RAM-backed mount on `/dev/ebaz20-ram` (required because main `/dev` is 64 KiB), binary transfer directly from WSL2 using SSH stdin, compare target SHA256 exactly to the source hash above. Then execute query-only mode (`--server 162.159.200.1`, without `--apply`) and record result; only thereafter consider explicit clock change and post-DHCP startup. No NAND writes or RTC changes in build step.
