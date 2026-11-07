@@ -343,3 +343,18 @@ EBAZ20_SNTP_ARM_STATIC_ELF_CHECK_PASS
 ~~~
 
 Status: EBAZ20_SNTP_ARM_STATIC_ELF_CHECK_PASS, ELF cross-build check passed. This is NOT yet proof that the binary executes on EBAZ4205 or can receive NTP responses. Next: create/reuse private 8 MiB RAM-backed mount on `/dev/ebaz20-ram` (required because main `/dev` is 64 KiB), binary transfer directly from WSL2 using SSH stdin, compare target SHA256 exactly to the source hash above. Then execute query-only mode (`--server 162.159.200.1`, without `--apply`) and record result; only thereafter consider explicit clock change and post-DHCP startup. No NAND writes or RTC changes in build step.
+
+## EBAZ-20.31 — On-board SNTP dry-run PASS
+
+User's actual EBAZ4205 UART console after the ARM SNTP binary was copied to a RAM-backed tmpfs:
+
+~~~text
+root@zedboard-zynq7:~# /dev/ebaz20-ram/ebaz20-sntp
+EBAZ20_SNTP_QUERY_PASS server=162.159.200.1 stratum=3 rtt_ms=218.3
+NTP estimated UTC: 2026-11-07 07:39:44 UTC
+EBAZ20_SNTP_DRY_RUN_PASS (clock unchanged)
+~~~
+
+**Result:** EBAZ20_SNTP_QUERY_PASS and EBAZ20_SNTP_DRY_RUN_PASS on **real XC7Z010 Cortex-A9 Linux 4.6.0**; IPv4/UDP123 reachability and server SNTPv4 response validation are confirmed. One-off server time appears plausible (local 2026-11-07). Explicit `--apply` has **not** been run, so no kernel clock-setting PASS and no post-reboot persistence or startup automation has been shown. Client is still stored on RAM-backed `/dev/ebaz20-ram` and will disappear after reboot. Earlier WSL build hash was `e5b2f839223f9ac8e42e314bb1d984259248260837e5eb01d787e775e998d3eb`; a post-transfer on-board SHA256 verification was requested but not provided in this message, so matching hashes remain PENDING.
+
+**Next gate:** confirm on-board SHA256, then run `/dev/ebaz20-ram/ebaz20-sntp --apply` and `date -u`, explicitly measuring changed CLOCK_REALTIME. Time setting changes RAM/system clock only, not RTC, NAND or Device Tree. Only after confirmed real-board apply PASS design persistent executable deployment and bounded post-DHCP network-time startup, with rollback and no interference in networking or SSH. Do not claim authenticated NTP or security-grade time source: this is single-server unauthenticated SNTP.
