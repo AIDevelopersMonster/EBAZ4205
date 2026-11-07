@@ -389,3 +389,13 @@ Board capture: `df -h /` reports `/dev/root 64.0M total, 14.4M used, 49.6M avail
 Preinstallation gate: first copy the *already verified* binary from the dedicated RAM-backed mount into `/usr/local/sbin/` on JFFS2, confirm identical SHA256; then transfer the init script from WSL2 using existing working SSH key, run `sh -n`, manually start and inspect `/run` state/log. Only after PASS create `/etc/rc5.d/S30ebaz20-sntp`, then validate on fresh reboot. Rollback simply removes that S30 symlink, preserving essential networking, mdev, Dropbear, existing backup. See complete commands in [SNTP README](../software/ebaz20-sntp/README.md).
 
 **Current status: STAGED_INSTALL_PENDING, MANUAL_SERVICE_TEST_PENDING, BOOT_AUTOSYNC_PENDING.** Do not claim automated time synchronization works before these tests. Kernel system clock manual set PASS remains unchanged.
+
+## EBAZ-20.34 — Persistent SNTP executable staged on NAND
+
+New user console output:
+- `mkdir -p /usr/local/sbin`, `cp /dev/ebaz20-ram/ebaz20-sntp /usr/local/sbin/ebaz20-sntp`, `chmod 700 /usr/local/sbin/ebaz20-sntp` completed without errors. This is a **persistent JFFS2 NAND filesystem write**.
+- SHA256 of installed ELF is `e5b2f839223f9ac8e42e314bb1d984259248260837e5eb01d787e775e998d3eb`, exactly matching both the WSL build and RAM-tested executable. Status: **SNTP_PERSISTENT_BINARY_HASH_PASS**.
+- `ls -ld /run` returns `drwxr-xr-x ... /run`; this proves the directory exists, **not** that it is currently mounted as tmpfs. Read-only mount verification still needed to guarantee volatile logs.
+- The SNTP SysV script is still only in the repo and has not been transferred to `/etc/init.d/ebaz20-sntp`, manually tested or symlinked from runlevel 5. **SERVICE_INSTALL_PENDING / SERVICE_MANUAL_PASS_PENDING / AUTOSTART_PENDING**.
+
+Next one-change gate: from WSL2 transfer the tracked `software/ebaz20-sntp/ebaz20-sntp-init` using the previously working `~/.ssh/ebaz4205_ecdsa` to `/etc/init.d/ebaz20-sntp`, verify `sh -n`, `grep ' /run ' /proc/mounts`, script permissions and init link absence; then manually invoke its `start`, inspect `status`, log and time. **Do not create `/etc/rc5.d/S30ebaz20-sntp` until manual service PASS**. In case of syntax/script failure, simply do not enable the link; the independent installed SNTP executable remains available for manual `--apply`.
