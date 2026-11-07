@@ -1,0 +1,89 @@
+#!/bin/sh
+# EBAZ4205: one-shot SNTP system-clock bootstrap after DHCP.
+# 2026-11: intended for BusyBox ash / SysVinit on PetaLinux 2016.4.
+# No change to DHCP, Dropbear, RTC, Device Tree or FPGA configuration.
+### BEGIN INIT INFO
+# Provides:          ebaz20-sntp
+# Required-Start:    $network
+# Required-Stop:
+# Default-Start:     5
+# Default-Stop:
+# Short-Description: Set Linux system time once from SNTP after DHCP
+### END INIT INFO
+
+PATH=/sbin:/usr/sbin:/bin:/usr/bin
+BIN=/usr/local/sbin/ebaz20-sntp
+SERVER=162.159.200.1
+STATE=/run/ebaz20-sntp.state
+LOG=/run/ebaz20-sntp.log
+MAX_ATTEMPTS=24
+RETRY_SECONDS=10
+
+network_ready() {
+    [ -r /sys/class/net/eth0/carrier ] || return 1
+    [ "$(cat /sys/class/net/eth0/carrier 2>/dev/null)" = 1 ] || return 1
+    ifconfig eth0 2>/dev/null | grep -q 'inet addr:' || return 1
+    grep -Eq '^eth0[[:space:]]+00000000[[:space:]]' /proc/net/route || return 1
+}
+
+worker() {
+    attempt=1
+    echo "SNTP: worker started; host=$SERVER max_attempts=$MAX_ATTEMPTS"
+    while [ "$attempt" -le "$MAX_ATTEMPTS" ]; do
+        if network_ready; then
+            echo "SNTP: network ready, attempt=$attempt"
+            if "$BIN" --server "$SERVER" --apply; then
+                echo "PASS" > "$STATE"
+                date -u
+                echo 'SNTP: system clock set successfully'
+                exit 0
+            fi
+        else
+            echo "SNTP: waiting for DHCP IPv4/default route, attempt=$attempt"
+        fi
+        if [ "$attempt" -lt "$MAX_ATTEMPTS" ]; then
+            sleep "$RETRY_SECONDS"
+        fi
+        attempt=$((attempt + 1))
+    done
+    echo "FAIL: SNTP could not set the clock after $MAX_ATTEMPTS attempts" > "$STATE"
+    echo 'SNTP: giving up without blocking Linux boot'
+    exit 1
+}
+
+case "${1:-}" in
+    start)
+        if [ ! -x "$BIN" ]; then
+            echo "SNTP: $BIN not executable, skipping"
+            exit 0
+        fi
+        if [ ! -d /run ]; then
+            echo 'SNTP: /run is absent, skipping'
+            exit 0
+        fi
+        umask 077
+        echo 'STARTED' > "$STATE" || exit 1
+        /bin/sh "$0" --worker </dev/null > "$LOG" 2>&1 &
+        echo 'SNTP: background clock synchronization scheduled'
+        exit 0
+        ;;
+    --worker)
+        worker
+        ;;
+    stop)
+        # No K-link is installed. Pending worker gets SIGTERM at shutdown.
+        # This one-shot service does not run a persistent daemon.
+        exit 0
+        ;;
+    status)
+        if [ -r "$STATE" ]; then
+            cat "$STATE"
+        else
+            echo 'NOT_STARTED'
+        fi
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|status}" >&2
+        exit 2
+        ;;
+esac
