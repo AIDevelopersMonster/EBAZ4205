@@ -262,3 +262,27 @@ ls -l /sys/bus/mmc/devices/
 3. При наличии `mmcblk0` — `SD_ENUMERATION_PASS`; только после этого read-only mount на `/tmp/sd` при подтверждённом FAT32 разделе, без `mkfs`, `dd`, `fsck` или каких-либо команд записи. Если появится `mmc0:` но не `mmcblk0`, расследовать DT CD/pinctrl, питание U7, резисторы и работу драйвера; не считать это доказательством необходимости перепайки boot-mode.
 
 **Важное разграничение:** стандартный MMC-хост Linux распознаёт сам носитель независимо от ФС; FAT32 помогает при последующем монтировании, но НЕ требуется для обнаружения `/dev/mmcblk0`. Никакого аппаратного PASS до вывода реальной платы.
+
+
+## 2026-11-07 — SDHC hardware boot enumeration PASS on our EBAZ4205
+
+User reports **actual UART boot log from the real board**, with microSD card present during boot while the board continues to use the NAND-based Linux:
+
+```text
+mmc0: new high speed SDHC card at address aaaa
+mmcblk0: mmc0:aaaa SC16G 14.8 GiB
+ mmcblk0: p1
+```
+
+**Verdict: `EBAZ23_SD_ENUMERATION_BOOT_PASS`**: onboard PS SDHCI0 host, card power, pinmux/data/command/clock connection and high-speed SDHC protocol work well enough to enumerate the card at boot. Linux recognizes `/dev/mmcblk0` and partition p1. This is **not** yet proof that `/dev/mmcblk0p1` filesystem is mountable/readable, that hot insertion works, or that SD is bootable as primary media.
+
+The previous `/dev/mmcblk*`-absent result was taken without successfully detected media. No boot-strap resistor changes, FPGA bitstream writes, SD format or NAND modifications are required for enumeration. Keep NAND-boot intact.
+
+**Next read-only checks**, first no mount:
+```sh
+ls -l /dev/mmcblk0*
+cat /proc/partitions
+blkid /dev/mmcblk0p1 2>/dev/null || true
+cat /proc/filesystems | grep -E 'vfat|ext4|exfat'
+```
+Mount only after FS identification, using a single `/tmp/sd` mountpoint with safe read-only flags. For ext4, use `ro,noload` to prevent journal replay; do not use fsck/mkfs/partition changes. For FAT32, `mount -t vfat -o ro /dev/mmcblk0p1 /tmp/sd`. If `mdev` did not create nodes although kernel enumerates a card, investigate `/dev` before mount. Do not infer card write functionality until independently tested on a disposable card.
