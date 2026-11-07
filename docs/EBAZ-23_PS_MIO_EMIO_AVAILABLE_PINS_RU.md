@@ -315,3 +315,17 @@ df -h /tmp/sd
 ```
 
 Если требуется закончить сеанс: `umount /tmp/sd`. Не использовать `mkfs`, `fsck`, `dd`, `mount -o rw` и не делать записей, пока не завершена верификация чтения и не получено подтверждение безопасного тестового носителя.
+
+
+## 2026-11-07 — SDHC auto-mount confirmed: /run/media/mmcblk0p1
+
+**On-board evidence** (Linux 4.6 NAND-boot), as reported by user:
+
+```text
+/dev/mmcblk0p1 /run/media/mmcblk0p1 vfat rw,relatime,fmask=0000,dmask=0000,allow_utime=0022,codepage=437,iocharset=iso8859-1,shortname=mixed,errors=remount-ro 0 0
+20 16 179:1 / /run/media/mmcblk0p1 rw,relatime - vfat /dev/mmcblk0p1 rw,fmask=0000,dmask=0000,allow_utime=0022,codepage=437,iocharset=iso8859-1,shortname=mixed,errors=remount-ro
+```
+
+**Verdict: `EBAZ23_SD_AUTOMOUNT_PASS`** — SDHC card was enumerated at boot, VFAT partition `/dev/mmcblk0p1` was automatically mounted by current Linux at `/run/media/mmcblk0p1`, writable (`rw`). Earlier explicit `mount -t vfat -o ro /dev/mmcblk0p1 /tmp/sd` returned `Device or resource busy` because the partition already had an active mount at another location; `/tmp/sd` remained a mere directory on tmpfs. MobaXterm SFTP should browse **`/run/media/mmcblk0p1`** directly.
+
+**Next independent confirmation required:** listing actual card files and metadata with `ls -lah /run/media/mmcblk0p1` and `df -h /run/media/mmcblk0p1`; do not claim file-content read PASS without it. Because auto-mount is `rw`, do not change files unless user explicitly requests; only normal read-only listing. This test did not alter boot-mode straps, PL bitstream, or NAND.
