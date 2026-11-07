@@ -300,3 +300,17 @@ for a in ntpd ntpdate rdate busybox; do command -v "$a" 2>/dev/null || :; done
 echo '=== CLOCK NOW ==='
 date -u
 ~~~
+
+## EBAZ-20.27 — Internet validation: RTC footprint X3/Y2 vs PCF8563 Device Tree
+
+**External research checked 2026-11-07; no on-board changes made.**
+
+1. Community pinout documents EBAZ4205 MIO26=`RTC_SCL` (SoC package A15), MIO27=`RTC_SDA` (D13): https://gist.github.com/mwalle/d8291e241075d82d1d420afa9302bd91
+2. Community board-hardware inventory says optional X3 footprint and Y2 RTC quartz; X3 fits a DS1307-like pinout, but its 3.3V supply is not suitable for a nominal 5V DS1307, leading to the *hypothesis* PCF8523. This is not a confirmed part identification, nor proof X3/Y2 are populated: https://github-wiki-see.page/m/xjtuecho/EBAZ4205/wiki/Hardware-Build-States.-What-you-may-or-not-have-fitted-on-your-board.
+3. The rebuilt KiCad schematic explicitly labels X3 as `DS1307` and Y2 as `NC` in file data. A schematic symbol/value is not an assembly/BOM confirmation: https://github.com/xjtuecho/EBAZ4205/blob/master/HW/ebaz4205/kicad/ebaz4205.kicad_sch
+4. Community discussion notes X3 RTC as **possibly PCF8523** and Y2 footprint in the hardware list: https://github.com/xjtuecho/EBAZ4205/issues/13
+5. I2C addresses differ: PCF8563 has 7-bit address `0x51` (NXP PCF8563 reference https://www.nxp.com/products/PCF8563), PCF8523 has default 7-bit address `0x68` (NXP PCF8523 product data sheet https://www.nxp.com/docs/en/data-sheet/PCF8523.pdf); DS1307 likewise uses `0x68`. The current EBAZ4205 Linux tree has an I2C client `rtc@51` at `i2c@e0004000`, so its configuration may be stale/unmatched to the specific EBAZ4205 assembly.
+6. The old Linux `rtc-pcf8563` driver logs `chip found, driver version 0.4.4` BEFORE attempting `i2c_master_send` at register `0x0e` and BEFORE registering the RTC; **the log message does not prove a chip acknowledged I2C**. Source: https://cos.googlesource.com/third_party/kernel/+/14f09e2f9b85076133b795a2d2615f635482de1b/drivers/rtc/rtc-pcf8563.c. The failed write to reg `0x0e` value `0x03`, error `-11`, means the transfer failed; the exact physical cause cannot be determined from this code alone.
+7. A PCF8563 node at address `0x51` also exists in reference Xilinx Zynq ZC706 board DTS *behind an I2C multiplexer* (not proof of direct source copied to EBAZ board): https://github.com/Xilinx/device-tree-xlnx/blob/master/device_tree/data/kernel_dtsi/2017.2/BOARD/zc706.dtsi. This reinforces the need to treat generic 2017-era device-tree peripherals skeptically.
+
+**Conclusion:** Hardware RTC on this user's EBAZ4205 is **UNCONFIRMED**. A mismatch between current PCF8563-compatible Device Tree and community-proposed PCF8523 footprint is a **plausible, grounded hypothesis**, not a proved board-specific identification. Do not change `rtc@51` to `rtc@68` blindly. Safest next tests: inspect actual PCB X3/Y2 via clear close-up/visual inspection, read current DT compatible and I2C sysfs name, check installed time-sync clients; then design NTP-based Linux system-time setup independent of optional RTC. Avoid raw I2C reads/writes/scans, driver unbind/bind, and rewriting NAND/DT in this phase.
