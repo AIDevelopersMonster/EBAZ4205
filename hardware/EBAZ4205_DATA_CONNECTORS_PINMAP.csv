@@ -1,0 +1,43 @@
+connector,connector_pin,fpga_package_pin,bank,example_daughterboard_use,status,source
+DATA1,5,A20,35,HDMI differential in daughterboard,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
+DATA1,6,H16,35,FPGA UART RX in external project,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
+DATA1,7,B19,35,HDMI differential in daughterboard,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
+DATA1,8,B20,35,HDMI differential in daughterboard,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
+DATA1,9,C20,35,HDMI differential in daughterboard,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
+DATA1,11,H17,35,FPGA UART TX in external project,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
+DATA1,13,D20,35,HDMI differential in daughterboard,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
+DATA1,14,D18,35,buzzer daughterboard,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
+DATA1,15,H18,35,LED daughterboard,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
+DATA1,16,D19,35,HDMI differential in daughterboard,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
+DATA1,17,F20,35,HDMI differential in daughterboard,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
+DATA1,18,E19,35,LED daughterboard,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
+DATA1,19,F19,35,HDMI differential in daughterboard,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
+DATA1,20,K17,35,LED daughterboard,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
+DATA2,4,G20,35,unassigned in cited examples,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
+DATA2,6,J18,35,unassigned in cited examples,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
+DATA2,7,G19,35,unassigned in cited examples,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
+DATA2,8,H20,35,unassigned in cited examples,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
+DATA2,9,J19,35,unassigned in cited examples,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
+DATA2,11,K18,35,unassigned in cited examples,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
+DATA2,13,K19,35,unassigned in cited examples,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
+DATA2,14,J20,35,unassigned in cited examples,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
+DATA2,15,L16,35,unassigned in cited examples,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
+DATA2,16,L19,35,unassigned in cited examples,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
+DATA2,17,M18,35,unassigned in cited examples,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
+DATA2,18,L20,35,unassigned in cited examples,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
+DATA2,19,M20,35,unassigned in cited examples,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
+DATA2,20,L17,35,unassigned in cited examples,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
+DATA3,5,M19,35,unassigned in cited examples,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
+DATA3,6,N20,34,unassigned in cited examples,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
+DATA3,7,P18,34,unassigned in cited examples,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
+DATA3,8,M17,35,unassigned in cited examples,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
+DATA3,9,N17,34,LCD RESET,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
+DATA3,11,P20,34,LCD SDA,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
+DATA3,13,R18,34,LCD DC,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
+DATA3,14,R19,34,LCD SCLK,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
+DATA3,15,P19,34,KEY2,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
+DATA3,16,T20,34,LCD BL,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
+DATA3,17,U20,34,KEY3,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
+DATA3,18,T19,34,KEY1,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
+DATA3,19,V20,34,KEY5,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
+DATA3,20,U19,34,KEY4,REFERENCE_NOT_TESTED_ON_OUR_BOARD,darktjm/ebaz/ebaz.xdc
