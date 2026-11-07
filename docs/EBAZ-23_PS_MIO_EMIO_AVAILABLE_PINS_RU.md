@@ -103,3 +103,18 @@ dmesg | grep -i -E 'mmc|sdhci|card detect'
 echo '=== GPIO DEBUG ==='
 cat /sys/kernel/debug/gpio 2>/dev/null
 ```
+
+## 2026-11-07 — пользовательские красный/зелёный LED: фотографии и XDC
+
+**SW2/SW3 INPUT PASS:** пользователь нажимал реальные кнопки в `/tmp/ebaz23-gpio-buttons`; терминал показал четыре `Нажата кнопка SW3` и три `Нажата кнопка SW2`. Это подтверждает работу **именно кнопок**, не LED.
+
+**Расположение LED на плате:** два маленьких пользовательских LED расположены **между блоком кнопок и разъёмом RJ45**, вдоль края платы. Маркированное фото: [tonyho — board front with labels](https://github.com/tonyho/EBAZ4205-Minimum-Board-Operating-Configuration/blob/master/Documents/ebaz4205.jpg); независимая фотография той же стороны: [xjtuecho — PCB top layer](https://github.com/xjtuecho/EBAZ4205/blob/master/image/01-PCB-TL.jpg). Не путать с индикаторами Ethernet PHY, POWER и DONE.
+
+**Физическая карта PL подтверждается двумя XDC:**
+- [xjtuecho/Development/EBAZ4205.xdc](https://github.com/xjtuecho/EBAZ4205/blob/master/Development/EBAZ4205.xdc): greenLED = **W13**, redLED = **W14**;
+- [darktjm/ebaz.xdc](https://github.com/darktjm/ebaz/blob/master/ebaz.xdc): LED_GREEN = **W13**, LED_RED = **W14**, и комментарий автора *"Apparently emio[0] is red, and emio[1] is green by default"*; это заявление об observed mapping автора, не гарантия трассировки в нашем factory bitstream;
+- [KeitetsuWorks device tree](https://github.com/KeitetsuWorks/EBAZ4205/blob/master/linux/ebaz4205/project-spec/meta-user/recipes-bsp/device-tree/files/ebaz4205.dtsi) задаёт GPIO54(EMIO0) = red, GPIO55(EMIO1) = green, ACTIVE_LOW, при **их собственной** FPGA-конфигурации.
+
+**Важный вывод:** GPIO960/961 в нашем Linux соответствуют EMIO0/1 на стороне PS, но связи EMIO0→W14 и EMIO1→W13 **на установленном штатном bitstream пока не подтверждены**. Запись в эти GPIO сейчас не является безопасно предсказуемым тестом светодиодов: возможны другие соединения. Не включать контроль LED в коммерческие PASS до реального эксперимента.
+
+Факт по нескольким источникам: светодиоды найдены на фотографиях и у нас есть физические FPGA ball-пины W13/W14. Для дальнейшей проверки — сначала read-only анализ текущей карты `/sys/class/leds`, DT и разрешённых GPIO. 
