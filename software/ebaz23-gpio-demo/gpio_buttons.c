@@ -28,7 +28,6 @@ struct button {
     int stable;
     int candidate;
     int streak;
-    unsigned presses;
 };
 
 static void handle_signal(int signo)
@@ -129,12 +128,10 @@ static int prepare_button(struct button *button)
     button->stable = first;
     button->candidate = first;
     button->streak = 0;
-    printf("%s GPIO%d initial=%d (active-low press expected, verify)\n",
-           button->name, button->number, first);
     return 0;
 }
 
-static int poll_button(struct button *button, int *speed)
+static int poll_button(struct button *button)
 {
     int value = read_gpio(button->fd);
     if (value < 0) {
@@ -142,6 +139,8 @@ static int poll_button(struct button *button, int *speed)
                 strerror(errno));
         return -1;
     }
+
+    /* Debounce: accept only values stable for three consecutive samples. */
     if (value != button->candidate) {
         button->candidate = value;
         button->streak = 1;
@@ -150,19 +149,11 @@ static int poll_button(struct button *button, int *speed)
     }
     if (button->streak >= DEBOUNCE_SAMPLES && value != button->stable) {
         button->stable = value;
-        // The external project's DTS specifies ACTIVE_LOW for both buttons.
-        // Raw 0 is treated as pressed, which must be verified on this board.
+        /* Buttons are active-low per EBAZ4205 reference Device Tree. */
         if (value == 0) {
-            ++button->presses;
-            if (strcmp(button->name, "S2") == 0 && *speed > 0) --*speed;
-            if (strcmp(button->name, "S3") == 0 && *speed < 9) ++*speed;
-            printf("%s PRESSED (GPIO%d raw=0), demo-speed=%d\n",
-                   button->name, button->number, *speed);
-        } else {
-            printf("%s RELEASED (GPIO%d raw=1)\n",
-                   button->name, button->number);
+            printf("Нажата кнопка %s\n", button->name);
+            fflush(stdout);
         }
-        fflush(stdout);
     }
     return 0;
 }
@@ -172,7 +163,7 @@ static void usage(const char *program)
     printf("Usage: %s [--seconds 1..300] [--base N]\n", program);
     puts("Reads PS MIO20/MIO32 through Linux 4.6 GPIO sysfs.");
     puts("Exports INPUT lines only; does not toggle LEDs, NAND or FPGA.");
-    puts("Default: --seconds 20 --base 906. Press S2/S3 during the run.");
+    puts("Default: run until Ctrl+C; --base 906. Press SW2/SW3.");
 }
 
 static int parse_int(const char *text, int lower, int upper, int *target)
@@ -188,7 +179,7 @@ static int parse_int(const char *text, int lower, int upper, int *target)
 
 int main(int argc, char **argv)
 {
-    int seconds = 20;
+    int seconds = 0; /* 0 = wait until Ctrl+C */
     int base = GPIO_BASE_DEFAULT;
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--help") == 0) {
@@ -208,8 +199,8 @@ int main(int argc, char **argv)
     }
 
     struct button buttons[2] = {
-        {.name="S2", .number=base+GPIO_S2_OFFSET, .fd=-1},
-        {.name="S3", .number=base+GPIO_S3_OFFSET, .fd=-1}
+        {.name="SW2", .number=base+GPIO_S2_OFFSET, .fd=-1},
+        {.name="SW3", .number=base+GPIO_S3_OFFSET, .fd=-1}
     };
     struct sigaction sa;
     memset(&sa, 0, sizeof(sa));
@@ -224,13 +215,12 @@ int main(int argc, char **argv)
         goto done;
     }
 
-    puts("EBAZ23_GPIO_BUTTONS_READY: press S2 and S3, no outputs changed.");
+    puts("Ожидание нажатий SW2 и SW3. Для выхода нажмите Ctrl+C.");
     fflush(stdout);
-    int speed = 5;
     const struct timespec period = {.tv_sec=0, .tv_nsec=SAMPLE_NS};
-    for (int tick = 0; tick < seconds * 40 && !interrupted; ++tick) {
+    for (int tick = 0; !interrupted && (seconds == 0 || tick < seconds * 40); ++tick) {
         for (int i = 0; i < 2; i++) {
-            if (poll_button(&buttons[i], &speed) != 0) {
+            if (poll_button(&buttons[i]) != 0) {
                 status = 1;
                 goto done;
             }
@@ -239,9 +229,6 @@ int main(int argc, char **argv)
     }
 
 done:
-    printf("RESULT: S2 presses=%u; S3 presses=%u; status=%s\n",
-           buttons[0].presses, buttons[1].presses,
-           status == 0 ? "PASS_SOFTWARE_ONLY" : "FAIL");
     release_button(&buttons[1]);
     release_button(&buttons[0]);
     return status;
