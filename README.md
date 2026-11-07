@@ -20,6 +20,23 @@
 
 **[Полное оглавление документации](docs/README.md)** — маршруты по всем EBAZ-03…23, справочникам, исходникам и лабораторным материалам.
 
+## Полезные внешние репозитории
+
+Два проекта, которые используем **как справочные примеры для нашей EBAZ4205 с платой расширения 660269A_Y13** (совместимость конкретной ревизии пока не подтверждена):
+
+- **[tomorrow56/EBAZ4205_tutorial](https://github.com/tomorrow56/EBAZ4205_tutorial)** — систематические лабораторные работы Vivado/Vitis: LED, кнопки, HDMI, PS/PL, AXI4-Lite и SPI LCD. Полезен как эталон организации [нашего учебного маршрута](tutorials/README.md).
+- **[Alex-Electron/ZX_BulbuLator](https://github.com/Alex-Electron/ZX_BulbuLator)** — пример более сложного проекта на EBAZ4205 с LED/KEY и HDMI; ориентир для лабораторий [LAB-05](tutorials/05_pl_led_key_adapter/README.md) и [LAB-06](tutorials/06_pl_hdmi_adapter/README.md).
+
+**[Полный атлас сторонних проектов и ограничения применимости](docs/EBAZ-21_COMMUNITY_PROJECTS_REVIEW_RU.md).** Ссылки не означают, что сторонний XDC или FPGA bitstream безопасно загружать на нашу плату.
+
+[Карта LED1–4/KEY1–4, HDMI family B и Step 1–7 из ZX_BulbuLator](docs/ZX_BULBULATOR_REFERENCE_RU.md) — проверено по исходникам автора, **не по измерениям нашей PCB**. Для LAB-05 подготовлены независимые [RTL/XDC и тестбенч](tutorials/05_pl_led_key_adapter/README.md).
+
+## Практические лаборатории (LAB-01…07)
+
+У нас есть последовательный [практический маршрут](tutorials/README.md), построенный по принципу EBAZ4205_tutorial: от проверенных UART/Linux и SD/PS-GPIO до собственных FPGA LED/KEY, HDMI и PS→PL AXI. **Первые четыре урока опираются на аппаратные PASS; уроки 05–07 находятся в PENDING.**
+
+Отдельно документирована наша реальная [плата расширения 660269A_Y13](hardware/adapters/660269A_Y13/README.md): видимые элементы уже описаны по фотографиям, а электрические соединения и XDC пока не объявлены проверенными.
+
 ## Что представляет собой плата
 
 | Компонент | Описание |
@@ -73,7 +90,8 @@ sh /run/media/mmcblk0p1/EBAZ4205/tests/buttons/test-buttons.sh
 
 ```text
 README.md           Главная страница / точка входа
-docs/               Справочники, инструкции и архив лабораторий EBAZ-03…23
+docs/               Справочники, инструкции и исторические журналы EBAZ-03…23
+tutorials/          Последовательный маршрут LAB-01…07 (PASS/PENDING)
 hardware/           Машиночитаемые таблицы PS MIO и PL DATA
 software/           Исходники ARM/Linux-программ и инструкции сборки
 sdcard/             Файлы комплектной microSD Developer SD
