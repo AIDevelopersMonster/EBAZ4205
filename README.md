@@ -77,3 +77,11 @@ Do not publish unsanitized UART logs or credentials.
 ### EBAZ-20 — автосинхронизация системных часов: PASS
 
 **`EBAZ20_SNTP_AUTOBOOT_PASS` (07.11.2026):** после полной загрузки из NAND PetaLinux 2016.4 самостоятельно дождалась DHCP, получила время от SNTP-сервера и установила системные часы Linux. Для этого аппаратный RTC не требуется при доступной сети. Доказательство и ограничения — в [журнале EBAZ-20.37](docs/EBAZ-20_BOOT_INIT_CPU_AUDIT_RU.md); исходники — [software/ebaz20-sntp](software/ebaz20-sntp/README.md).
+
+## EBAZ-21 — внешние проекты, схемы, порты и FPGA
+
+- [Атлас проектов GitHub: оценка, состав, лицензии, что заимствовать и улучшить](docs/EBAZ-21_COMMUNITY_PROJECTS_REVIEW_RU.md).
+- [Аппаратная карта: схемы, физические порты, разводка и подтверждённая штатная FPGA](docs/EBAZ-21_BOARD_PINOUT_AND_FACTORY_FPGA_RU.md).
+- [CSV-таблица 42 сигнальных контактов DATA1/DATA2/DATA3](hardware/EBAZ4205_DATA_CONNECTORS_PINMAP.csv) — **сторонние XDC, до подключения проверить именно нашу ревизию**.
+
+Важный уже выполненный этап: EBAZ-20 ARM BRAM-reader прочитал 32 слова (128 байт) с адреса `0x40000000`, PASS. Программа не осуществляла запись. Для штатного bitstream и полного списка задействованных выводов требуется дальнейшая верификация. Не заменять конфигурацию PL без сохранения Ethernet EMIO и запасного UART/JTAG-доступа.
