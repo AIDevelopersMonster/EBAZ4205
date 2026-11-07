@@ -399,3 +399,23 @@ New user console output:
 - The SNTP SysV script is still only in the repo and has not been transferred to `/etc/init.d/ebaz20-sntp`, manually tested or symlinked from runlevel 5. **SERVICE_INSTALL_PENDING / SERVICE_MANUAL_PASS_PENDING / AUTOSTART_PENDING**.
 
 Next one-change gate: from WSL2 transfer the tracked `software/ebaz20-sntp/ebaz20-sntp-init` using the previously working `~/.ssh/ebaz4205_ecdsa` to `/etc/init.d/ebaz20-sntp`, verify `sh -n`, `grep ' /run ' /proc/mounts`, script permissions and init link absence; then manually invoke its `start`, inspect `status`, log and time. **Do not create `/etc/rc5.d/S30ebaz20-sntp` until manual service PASS**. In case of syntax/script failure, simply do not enable the link; the independent installed SNTP executable remains available for manual `--apply`.
+
+## EBAZ-20.35 — SNTP SysV syntax, tmpfs and disabled autostart confirmed
+
+New EBAZ4205 console evidence:
+- `sh -n /etc/init.d/ebaz20-sntp` exit code `0`: installed shell script syntax checked successfully. Presence of script is thereby established.
+- `grep ' /run ' /proc/mounts` returns `tmpfs /run tmpfs rw,nosuid,nodev,mode=755 0 0`. Script status/log under `/run` will not persist to NAND (bar accidental external override not observed).
+- `ls -l /etc/rc5.d/*ebaz20-sntp*` returns No such file or directory. So SNTP service autostart **has not been enabled**.
+- Earlier EBAZ-20.34 verified persistent SNTP ELF hash `e5b2f839223f9ac8e42e314bb1d984259248260837e5eb01d787e775e998d3eb`.
+
+**Status: SNTP_INIT_PRECHECK_PASS** (script syntax + volatile logging + no autostart). Manual service operation is **NOT YET TESTED**. Next on board:
+
+~~~sh
+/etc/init.d/ebaz20-sntp start
+sleep 15
+/etc/init.d/ebaz20-sntp status
+cat /run/ebaz20-sntp.log
+date -u
+~~~
+
+Expect `PASS`, `EBAZ20_SNTP_CLOCK_SET_PASS`, accurate time. If `STARTED` or logs indicate retry, do not immediately classify as fail: worker can retry up to 24 times with 10-second sleeps; inspect log/status later. **Do not create S30 link before manual PASS.**
