@@ -66,3 +66,59 @@ python3 test_sntp_host.py
 Host-only simulated UDP server passes valid response, invalid stratum rejection, invalid response token rejection. This is **not** a live NTP network test.
 
 References: [EBAZ Linux boot audit](../../docs/EBAZ-20_BOOT_INIT_CPU_AUDIT_RU.md), [Cloudflare public NTP](https://developers.cloudflare.com/time-services/ntp/usage/).
+
+## SysVinit service: staged install (EBAZ-20.33)
+
+**Stage 0: prerequisites already observed on board:** 64 MiB JFFS2 root has 49.6 MiB available; binary size 512.8 KiB; `eth0` uses DHCP; runlevel-5 starts networking from `S01networking`; on-board SNTP clock update already passed with verified SHA256 `e5b2f839223f9ac8e42e314bb1d984259248260837e5eb01d787e775e998d3eb`.
+
+**Stage 1: install persistent binary, but DO NOT enable service yet** (EBAZ4205 UART as root):
+
+```sh
+mkdir -p /usr/local/sbin
+cp /dev/ebaz20-ram/ebaz20-sntp /usr/local/sbin/ebaz20-sntp
+chmod 700 /usr/local/sbin/ebaz20-sntp
+sha256sum /usr/local/sbin/ebaz20-sntp
+```
+
+The hash must exactly match the above. A single copy to JFFS2 is a persistent NAND write; only proceed with existing rescue backup and UART.
+
+**Stage 2: transfer SysV script from Ubuntu WSL2** (using the key installed in that WSL user account):
+
+```sh
+cd ~/EBAZ4205
+git pull
+ssh -T -x -i ~/.ssh/ebaz4205_ecdsa -o IdentitiesOnly=yes root@192.168.1.77 \
+  'cat > /etc/init.d/ebaz20-sntp && chmod 700 /etc/init.d/ebaz20-sntp' \
+  < software/ebaz20-sntp/ebaz20-sntp-init
+```
+
+**Stage 3: first manual service test before autostart** (board UART):
+
+```sh
+sh -n /etc/init.d/ebaz20-sntp
+ls -ld /run
+/etc/init.d/ebaz20-sntp start
+sleep 15
+/etc/init.d/ebaz20-sntp status
+cat /run/ebaz20-sntp.log
+date -u
+```
+
+Expected `PASS`, `EBAZ20_SNTP_CLOCK_SET_PASS`, and correct UTC. If not PASS, inspect the log rather than enabling startup. This is a one-shot background service: 24 attempts spaced 10 seconds apart, capped at approx. four minutes, only acts with an IPv4 lease and default route. Log and status are under RAM-backed `/run` (verify mount), not NAND.
+
+**Stage 4: only after manual test PASS, enable autostart** (board UART):
+
+```sh
+ln -s ../init.d/ebaz20-sntp /etc/rc5.d/S30ebaz20-sntp
+ls -l /etc/rc5.d/S30ebaz20-sntp
+```
+
+**Rollback before/after reboot**:
+
+```sh
+rm -f /etc/rc5.d/S30ebaz20-sntp
+```
+
+Remove only this link (not /etc/init.d script or the binary). Full reboot verification: inspect `/run/ebaz20-sntp.state`, `/run/ebaz20-sntp.log`, `date -u`, Ethernet IP/route, and Dropbear SSH. `S30` follows networking and dropbear but its child starts in the background, so it will not hold up the SysVinit sequence. Leave `networking`, `udhcpc`, `dropbear`, `mdev` unchanged.
+
+**Safety limits:** the script does not continuously discipline clock drift, lacks NTP authentication and depends on public UDP/123. Changes are written to JFFS2 for persistence; avoid mass edits and monitor the JFFS2 summary warning previously observed. Do not claim BOOT_AUTOSYNC_PASS until a real post-reboot verification.
