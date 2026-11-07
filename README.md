@@ -67,3 +67,7 @@ Do not publish unsanitized UART logs or credentials.
 ## EBAZ-20 — ревизия загрузки, служб и Cortex-A9
 
 [**Открыт аудит BootROM/FSBL → U-Boot → Linux → SysVinit → сетевые службы и два Cortex-A9**](docs/EBAZ-20_BOOT_INIT_CPU_AUDIT_RU.md). Сначала снимаем фактическую карту автозагрузки, содержимое `/etc/inittab`, `rcS.d`, `rc5.d`, список процессов, CPU online и mountpoints. Изменения NAND/bitstream и отключение сервисов пока запрещены. Приоритеты: наложенный 64-KiB tmpfs на `/dev`, Ethernet PHY/DHCP, пустой `inetd`, а также проверка SMP/драйверов.
+
+## EBAZ-20 — синхронизация программных часов по SNTP
+
+[**Клиент SNTP для Cortex-A9: исходный код, проверка ответа, установка системного времени (только по `--apply`)**](software/ebaz20-sntp/README.md). Аппаратный RTC на плате пока не подтверждён; системное время может быть установлено после получения сети. Локальная сборка/имитационные тесты PASS, кросс-сборка и испытание на EBAZ4205 ещё **PENDING**. Автозагрузка не менялась.
