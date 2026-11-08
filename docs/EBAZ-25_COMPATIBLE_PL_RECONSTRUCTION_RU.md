@@ -46,3 +46,7 @@
 ### Дополнение: частичная реконфигурация
 
 Partial Reconfiguration / Dynamic Function eXchange требует собственной **заранее спроектированной статической области PL**; имея только закрытый заводской bitstream, нельзя безопасно «вставить» туда partial module. Сначала создаётся собственная совместимая базовая платформа, уже после проектируется reconfigurable partition.
+
+## Перепроверка полного атласа 2026-11-08
+
+[Канонический EBAZ-21](EBAZ-21_COMMUNITY_PROJECTS_REVIEW_RU.md#аудит-2026-11-08--ebaz-25-кандидаты-на-собственную-совместимую-pl) дополнен проверкой более широкого набора источников, включая **tomorrow56**, **blkf2016**, **Leungfung**, **alexlargacha**, **Stavros**, **trebisky**, **embed-me**, **ZX_BulbuLator** и **har-in-air**. Основной базой Ethernet/PS7 остаётся **KeitetsuWorks** (MIT), но `tomorrow56` повышен до равного приоритета при проектировании AXI и PS7. Особые риски: у har-in-air физически доработаны Y3/X5; старый Linux 4.6 использует `xdevcfg`, современный tomorrow56 — FPGA Manager; JTAG/XSDB PCAP скрипт ZX_BulbuLator не является Linux xdevcfg. Ни один открытый проект не подтвердил требуемую заводской Linux полную комбинацию AXI BRAM + UARTLite + Ethernet.
