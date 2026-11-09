@@ -63,6 +63,29 @@ def pip_lookup(meta, expected_type):
     return result
 
 
+def match_pip_feature(lookup, destination, source):
+    """Validate FASM .DST.SRC using X-Ray PIP metadata.
+
+    Bidirectional long-line PIPs have one canonical src/dst orientation in
+    tile_type_INT_*.json. The FASM bit pattern may select the reverse
+    direction. Only accept reverse lookup for is_directional=0 metadata.
+    """
+    direct = lookup.get((destination, source), ())
+    reverse = lookup.get((source, destination), ()) if destination != source else ()
+    reverse_bidir = [
+        entry for entry in reverse if str(entry[1].get("is_directional")) == "0"
+    ]
+    if len(direct) == 1:
+        return "EXACT_PIP_MATCH", direct[0][1]
+    if len(direct) > 1:
+        return "MULTIPLE_PIP_METADATA", None
+    if len(reverse_bidir) == 1:
+        return "BIDIRECTIONAL_REVERSED_PIP_MATCH", reverse_bidir[0][1]
+    if len(reverse_bidir) > 1:
+        return "MULTIPLE_PIP_METADATA", None
+    return "NO_PIP_METADATA", None
+
+
 def fixed_neighbor_index(entries):
     """Both directions of a fixed (nondirectional) tileconn link."""
     idx = defaultdict(list)
@@ -143,24 +166,23 @@ def analyze(fasm_path, device_dir, expected_sha256, output_dir):
                 status_count["duplicate_fasm_pip_feature"] += 1
                 continue
             unique_features.add(key)
-            meta_entries = lookups[kind].get((dst, src), [])
-            if len(meta_entries) == 1:
-                metadata_status = "EXACT_PIP_MATCH"
-                pip = meta_entries[0][1]
+            metadata_status, pip = match_pip_feature(lookups[kind], dst, src)
+            if pip is not None:
                 pseudo = str(pip.get("is_pseudo", "UNKNOWN"))
                 directional = str(pip.get("is_directional", "UNKNOWN"))
                 pass_transistor = str(pip.get("is_pass_transistor", "UNKNOWN"))
-                status_count["exact_metadata_matches"] += 1
                 status_count["pseudo_" + pseudo] += 1
                 status_count["directional_" + directional] += 1
-            elif len(meta_entries) > 1:
-                metadata_status = "MULTIPLE_PIP_METADATA"
+                if metadata_status == "EXACT_PIP_MATCH":
+                    status_count["exact_metadata_matches"] += 1
+                else:
+                    status_count["bidirectional_reversed_matches"] += 1
+            elif metadata_status == "MULTIPLE_PIP_METADATA":
                 pseudo = directional = pass_transistor = "AMBIGUOUS"
                 status_count["ambiguous_metadata_matches"] += 1
                 if len(samples["ambiguous"]) < 12:
                     samples["ambiguous"].append(s[:160])
             else:
-                metadata_status = "NO_PIP_METADATA"
                 pseudo = directional = pass_transistor = "UNVERIFIED"
                 status_count["missing_metadata_matches"] += 1
                 if len(samples["missing_pip_metadata"]) < 12:
@@ -236,7 +258,9 @@ def analyze(fasm_path, device_dir, expected_sha256, output_dir):
         "top_destination_wire_names": dest_count.most_common(20),
         "examples": dict(samples),
         "interpretation": [
-            "In INT FASM feature TILE.DST.SRC, candidate connection is SRC -> DST.",
+            "In INT FASM feature TILE.DST.SRC, configured orientation is SRC -> DST.",
+            "Bidirectional PIP metadata may store the opposite orientation.",
+            "Reverse matching is allowed only when is_directional=0; do not enable both directions.",
             "Matched tile PIP metadata validates the local wire pair and flags.",
             "tileconn is fixed, non-directional adjacency, not an enabled PIP.",
             "No connected graph or end-to-end netlist has been reconstructed.",
@@ -286,6 +310,7 @@ def main():
     print("JSON:", json_path)
     print("CSV:", csv_path)
     if report["metadata_checks"].get("missing_metadata_matches", 0) or \
+            report["metadata_checks"].get("ambiguous_metadata_matches", 0) or \
             report["int_feature_rows_not_dst_src"]:
         print("WARNING: metadata mismatches or non-PIP INT features need investigation")
         print("EBAZ27_INT_ROUTE_EVIDENCE_PARTIAL (NOT NETLIST)")
