@@ -37,6 +37,18 @@
 
 Проверенные внешние интерфейсы: документация Xilinx `Documentation/devicetree/bindings/gpio/gpio-xilinx.txt` для Linux 4.x, `leds-gpio.txt`, Xilinx Zynq GP GPIO/EMIO tutorial и AMD UG585.
 
+## EBAZ-28.1B — стандартный AXI GPIO вместо LED blinker: локальный статический PASS (2026-11-09)
+
+На CHUWI пользователь развернул `EBAZ28_AXI_GPIO_first_boot.zip` в `$HOME\\EBAZ4205` и выполнил `py hardware/ebaz28-axi-gpio/contract_test.py` — **15 проверок PASS**, итог **`EBAZ28_AXI_GPIO_CONTRACT_CHECK_PASS (STATIC ONLY, NOT VIVADO)`**. Этот тест сверяет статические текстовые признаки Tcl/XDC/DT, а не строит схему FPGA и не гарантирует работу Linux. В локальном комплекте также имеются `add_axi_gpio_to_ps7.tcl`, `ebaz28_leds_reference.xdc`, `ebaz28-axi-gpio-legacy.dtsi.in`, `read_only_target_inventory.sh`, `README_RU.md`. Эти файлы **локально распакованы**, но их наличие в публичной истории GitHub пока не установлено.
+
+**Выбранный контракт:** PS7 `M_AXI_GP0` → AXI Interconnect → **Xilinx AXI GPIO v2.0** (2 output bits, no IRQ). Предлагаемая новая база MMIO **`0x41200000`**, регистры `GPIO_DATA+0x00`, `GPIO_TRI+0x04`; reset DATA=`0x3` (active-low LEDs оба OFF), TRI=`0x0` (output). Бит 0: красный W14, бит 1: зелёный W13 **по референсному XDC**, физическую ревизию и напряжение PL bank подтвердить до программирования. Аппаратной мигалки, счётчика, heartbeat или заданного периода **нет**. Доступ: стандартный kernel gpio-xilinx; существующий Linux 4.6 — `/sys/class/gpio`, при соответствующих CONFIG; `gpio-leds` опционален и занимает выводы как клиент.
+
+**Тонкость спецификации PG144:** для GPIO, настроенного как output, чтение `GPIO_DATA` не обязательно отражает записанный логический уровень (PG144 описывает чтение нулей для выходных битов). Поэтому `mmap()/devmem` readback DATA нельзя считать аппаратным доказательством фактического состояния LED; использовать драйверную модель и/или проверку физического уровня, сохраняя раздельную диагностику.
+
+**Гейты перед загрузкой:** проверить физический PS UART, штатный PS7/DDR3 init, полный Device Tree и реально доступный `CONFIG_GPIO_XILINX`, свободный новый AXI диапазон, Vivado `validate_bd_design` / synth / place-route / DRC / STA, отсутствие AXI проб из Linux к несуществующим адресам; отдельный DTB для теста с отключёнными зависимыми устройствами; наличие безопасного управления вентиляторами и сценария **cold** recovery. Никаких hot `/dev/xdevcfg` и записей NAND. Все Vivado/DTB/FPGA/boot проверки **PENDING**.
+
+Следующий **read-only** шаг: выполнить на штатной Linux через PS UART `hardware/ebaz28-axi-gpio/read_only_target_inventory.sh` (либо его команды вручную, без копирования в NAND), собрать реальные сведения о gpiochip, driver bindings, bootargs, ttyPS и MMIO map.
+
 ## Три различных вида заглушек (не смешивать)
 
 1. **DTB-safe (первый выбор):** в *альтернативном*, отдельно загружаемом DTB пометить зависимые PL-узлы `status = "disabled"`; до проверки точных путей live DT не писать готовые overlay/DTS адреса по памяти. Так не создаются соответствующие platform devices и не запускаются обычные `probe()` в Linux. Отдельно проверить GEM0 (это PS IP, но его физические линии идут через EMIO/PL), UARTLite, возможные прочие неизвестные PL потребители. Пустой `/proc/modules` **не значит**, что драйверов нет: часть встроена в ядро.
