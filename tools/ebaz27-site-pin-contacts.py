@@ -132,7 +132,7 @@ def propagate(labels, grid, conn, max_nodes):
             if (tile, wire) < other:
                 verified_links += 1
     return {
-        "initial_pip_wire_endpoints": initial,
+        "int_pip_wire_endpoints": initial,
         "total_fixed_wire_vertices": len(labels),
         "additional_wire_vertices_from_fixed_closure": len(labels) - initial,
         "fixed_tileconn_links_in_closure": verified_links,
