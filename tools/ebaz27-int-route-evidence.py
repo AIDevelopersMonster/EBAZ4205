@@ -34,6 +34,21 @@ def checked_json(path):
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def resolve_tile_type_path(device_dir, kind):
+    """Resolve X-Ray's split layout: shared tile_type files live in zynq7/.
+
+    tilegrid.json and tileconn.json are part-specific under zynq7/xc7z010/.
+    Also accepts a legacy part-local tile_type file where present.
+    """
+    filename = "tile_type_" + kind + ".json"
+    candidates = (device_dir.parent / filename, device_dir / filename)
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    raise ValueError("STOP: tile metadata %s not found; searched %s" % (
+        filename, ", ".join(str(p) for p in candidates)))
+
+
 def pip_lookup(meta, expected_type):
     if meta.get("tile_type") != expected_type:
         raise ValueError("STOP: tile_type mismatch for " + expected_type)
@@ -61,12 +76,16 @@ def fixed_neighbor_index(entries):
 
 
 def analyze(fasm_path, device_dir, expected_sha256, output_dir):
+    # Resolve metadata before the potentially large tilegrid/tileconn reads.
+    metadata_paths = {
+        kind: resolve_tile_type_path(device_dir, kind) for kind in KINDS
+    }
     grid = checked_json(device_dir / "tilegrid.json")
     conns = checked_json(device_dir / "tileconn.json")
     if not isinstance(grid, dict) or not isinstance(conns, list):
         raise ValueError("STOP: invalid X-Ray grid/connection database")
     lookups = {
-        kind: pip_lookup(checked_json(device_dir / ("tile_type_" + kind + ".json")), kind)
+        kind: pip_lookup(checked_json(metadata_paths[kind]), kind)
         for kind in KINDS
     }
     actual_hash = hashlib.sha256(fasm_path.read_bytes()).hexdigest()
@@ -201,6 +220,7 @@ def analyze(fasm_path, device_dir, expected_sha256, output_dir):
         "factory_fasm_sha256": actual_hash,
         "tilegrid_sha256": hashlib.sha256((device_dir / "tilegrid.json").read_bytes()).hexdigest(),
         "tileconn_sha256": hashlib.sha256((device_dir / "tileconn.json").read_bytes()).hexdigest(),
+        "pip_metadata_paths": {kind: str(p) for kind, p in metadata_paths.items()},
         "fasm_lines_total": fasm_lines,
         "non_int_feature_lines": non_int_lines,
         "int_feature_rows_not_dst_src": int_non_pip,
@@ -242,6 +262,8 @@ def main():
         parser.error("FASM, device database and output directory must already exist")
     report, csv_path, json_path = analyze(a.fasm, a.device_db, a.expected_sha256, a.outdir)
     print("EBAZ27 INT PIP / TILECONN EVIDENCE")
+    for kind, path in sorted(report["pip_metadata_paths"].items()):
+        print("PIP META %s: %s" % (kind, path))
     for key in (
         "fasm_lines_total", "observed_int_pip_feature_count",
         "int_feature_rows_not_dst_src", "unknown_bit_annotations",
