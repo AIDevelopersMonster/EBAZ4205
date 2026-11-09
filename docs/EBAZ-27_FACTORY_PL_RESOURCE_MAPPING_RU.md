@@ -66,6 +66,22 @@
 
 Инструмент следующего шага: `tools/ebaz27-site-evidence.py` (офлайн подсчёт реальных site entries по `tilegrid.sites`, группировка выраженных feature prefixes по точному tile type; SHA256 FASM проверяется, вывод JSON/CSV; каждый site имеет utilisation `UNKNOWN`). Синтетический тест парсинга и подсчёта 3 tiles / 7 sites пройден в изолированной среде автора. На реальном `tilegrid` CHUWI ожидается проверка пользователя.
 
+## EBAZ-27.8 — подтверждённая инвентаризация site definitions (CHUWI, 2026-11-09)
+
+Команда `tools/ebaz27-site-evidence.py` завершилась меткой **`EBAZ27_SITE_EVIDENCE_PASS (NOT UTILIZATION PASS)`**. Источники локальны: `factory.fasm`, `prjxray-db/zynq7/xc7z010/tilegrid.json`; результирующие файлы `/home/alex/ebaz27-xray/ebaz27-site-evidence.json` и `ebaz27-site-evidence.csv`.
+
+- **13 440** физических tile-entries; **8 590** site entries, **253 962** разобранных feature lines, **272** unknown-bit аннотации.
+- **SLICEL 2 900** (в tile с FASM: **2 775**), **SLICEM 1 500** (в tile с FASM: **1 423**): итого **4 400 SLICE site definitions**, но реальная занятость LUT/FF неизвестна.
+- **DSP48E1 80** (в tile с FASM: **0**): это не доказательство 80 свободных DSP.
+- **RAMBFIFO36E1 60** (в tile с FASM: **46**), **RAMB18E1 60** (в tile с FASM: **46**), **FIFO18E1 60** (в tile с FASM: **46**): эти виды site definitions не складывать как независимые емкости RAM.
+- **BUFGCTRL 32** (в tile с FASM: **16**), **BUFHCE 48** (в tile с FASM: **48**), **MMCME2_ADV 2** (в tile с FASM: **1**), **PLLE2_ADV 2** (в tile с FASM: **0**): конфигурационная активность tile не определяет использование clock site.
+- **PS7 1** (в tile с FASM: **0**), **IOB33M 48**/**IOB33S 48** (каждый по **38** в FASM tile), **ILOGICE3/OLOGICE3/IDELAYE2 по 100** (по **79** в FASM tile).
+- **TIEOFF 3 240** site entries (в FASM tile: **3 086**) входят в учтённые 8 590, но не эквивалентны пользовательским LUT/slices.
+
+### Шлюз EBAZ-27.9 — разбор конкретных FASM feature-prefixes
+
+В `ebaz27-site-evidence.json` поле `tile_types.<TYPE>.top_feature_prefixes` содержит пары (feature prefix, число строк), а `sample_features` — несколько примеров исходных строк для точного типа. Начать с `CLBLL_L`, `CLBLM_L`, `BRAM_L`, `DSP_L`, `RIOB33`, `RIOI3`, `CLK_BUFG_BOT_R`, `CMT_TOP_L_LOWER_B`; затем изучать INIT, FF, BRAM content, PIP, clocking через реальные строки. На этом шаге **не делать** выводов о свободном region, не привязывать BRAM/IO к Ethernet или ASIC без трассировки.
+
 ## Принцип проекта
 
 Майнер не является предметом отдельной разработки. Сохраняем аппаратные функции, необходимые независимой EBAZ4205 и Linux; специфическую логику хеширования, цепочек ASIC, майнинговых протоколов, адресации и управления процессом добычи в реконструированную PL не переносим. Если она обнаружится при анализе — помечаем `MINING_SPECIFIC` и исключаем при проектировании нового **совместимого** статического образа. Исходный заводской bitstream остаётся неизменным доказательственным образцом.
