@@ -67,6 +67,32 @@
 
 Контроль состояний: `EBAZ28_FACTORY_LINUX_GPIO_BASELINE_PASS` = установлен действующий PS GPIO и GPIO framework; `EBAZ28_AXI_GPIO_KERNEL_DRIVER_PASS` = **PENDING**; `EBAZ28_NEW_PL_BOOT_PASS` = **PENDING**; `EBAZ28_LINUX_GPIO_BOOT_PASS` = **PENDING**. Безопасный вентилятор/PS-UART recovery и отдельный DTB — обязательные условия перед заменой заводской PL.
 
+## EBAZ-28.1D — проверены GPIO драйвер и возможность модульной поставки (CHUWI, 2026-11-09)
+
+Результаты непосредственно с заводского устройства:
+
+- `/sys/class/gpio/gpiochip906/base=906`, `ngpio=118`, `label=zynq_gpio`. Глобальный диапазон GPIO в текущей загрузке: **906–1023**, он **не обозначает** номера пинов W13/W14; они являются PL outputs будущего AXI GPIO.
+- Точная конфигурация: `CONFIG_MODULES=y`, `CONFIG_OF_GPIO=y`, `# CONFIG_GPIO_XILINX is not set`, `CONFIG_GPIO_ZYNQ=y`. В предыдущем логе подтверждено `CONFIG_GPIO_SYSFS=y` и `CONFIG_GPIOLIB=y`.
+- `/sys/bus/platform/drivers` содержит `basic-mmio-gpio`, `gpio-clk`, `gpio-keys`, `gpio-keys-polled`, `leds-gpio`, `zynq-gpio`, но **нет** `gpio-xilinx`.
+- `/lib/modules/4.6.0-xilinx` существует, однако наличие каталога и `CONFIG_MODULES=y` **не доказывает**, что есть соответствующие исходники, `Module.symvers`, готовая сборка/возможность загрузить сторонний модуль или доступный компилятор.
+- В `/proc/device-tree/amba_pl` есть только `axi_bram_ctrl@40000000` и `serial@42c00000`; будущий `gpio@41200000` отсутствует. `#address-cells`/`#size-cells` присутствуют (значения ещё не декодированы); `ranges` пустая. Не обращаться к `0x41200000` на текущем bitstream — может не быть AXI slave.
+
+**Внешняя сверка с исходным Linux v4.6:** официальный `drivers/gpio/Kconfig` содержит `config GPIO_XILINX` (`tristate`, `depends on OF_GPIO`), драйвер `drivers/gpio/gpio-xilinx.c` определяет `platform_driver.name = gpio-xilinx` и OF compatible `xlnx,xps-gpio-1.00.a`; binding в `Documentation/devicetree/bindings/gpio/gpio-xilinx.txt` задаёт `reg`, `gpio-controller` и `#gpio-cells=<2>`. **Это доказывает, что ядро Linux 4.6 поддерживает подходящий штатный исходный драйвер, но не доказывает ABI-бинарную совместимость со старым заводским Xilinx kernel.** Ссылки: [Linux v4.6 gpio-xilinx.c](https://github.com/torvalds/linux/blob/v4.6/drivers/gpio/gpio-xilinx.c), [Linux v4.6 Kconfig](https://github.com/torvalds/linux/blob/v4.6/drivers/gpio/Kconfig), [Linux v4.6 gpio-xilinx DT binding](https://github.com/torvalds/linux/blob/v4.6/Documentation/devicetree/bindings/gpio/gpio-xilinx.txt).
+
+**Решение:** аппаратный IP остаётся Xilinx AXI GPIO v2.0 с стандартными регистрами DATA/TRI, двумя выходами и без мигалки. Приоритет софта — **build-only вне платы** модуля `gpio-xilinx.ko` на основе **соответствующего исходного дерева Xilinx Linux**, точного `.config`, компилятора, `Module.symvers` и kernel release/vermagic; сравнить экспортированные символы, `CONFIG_MODVERSIONS` и возможность загрузки модулей. До этого не объявлять DRIVER_PASS. Если достоверной совместимости достичь нельзя — отдельное тестовое ядро с `CONFIG_GPIO_XILINX=y`, загружаемое через проверенный RAM-only U-Boot route; заводскую NAND не перезаписывать.
+
+**Следующий только для чтения контроль** на заводском Linux:
+
+```sh
+cat /proc/version
+zcat /proc/config.gz | grep -E 'CONFIG_(MODULES|MODVERSIONS|MODULE_UNLOAD|OF_GPIO|GPIO_XILINX|GPIO_ZYNQ|GPIO_SYSFS|LOCALVERSION)' 
+ls -la /lib/modules/4.6.0-xilinx/
+ls -ld /lib/modules/4.6.0-xilinx/build /lib/modules/4.6.0-xilinx/source 2>/dev/null
+ls -la /proc/device-tree/amba_pl/
+```
+
+**Состояние:** `EBAZ28_FACTORY_GPIO_BASELINE_PASS`; `EBAZ28_AXI_GPIO_DRIVER_BUILD_PASS=PENDING`; `EBAZ28_AXI_GPIO_BOOT_PASS=PENDING`. Никакой тестовой PL, MMIO записи, NAND записи или hot PCAP не выполнялось.
+
 ## Три различных вида заглушек (не смешивать)
 
 1. **DTB-safe (первый выбор):** в *альтернативном*, отдельно загружаемом DTB пометить зависимые PL-узлы `status = "disabled"`; до проверки точных путей live DT не писать готовые overlay/DTS адреса по памяти. Так не создаются соответствующие platform devices и не запускаются обычные `probe()` в Linux. Отдельно проверить GEM0 (это PS IP, но его физические линии идут через EMIO/PL), UARTLite, возможные прочие неизвестные PL потребители. Пустой `/proc/modules` **не значит**, что драйверов нет: часть встроена в ядро.
