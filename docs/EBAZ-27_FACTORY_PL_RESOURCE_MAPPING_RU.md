@@ -82,6 +82,32 @@
 
 В `ebaz27-site-evidence.json` поле `tile_types.<TYPE>.top_feature_prefixes` содержит пары (feature prefix, число строк), а `sample_features` — несколько примеров исходных строк для точного типа. Начать с `CLBLL_L`, `CLBLM_L`, `BRAM_L`, `DSP_L`, `RIOB33`, `RIOI3`, `CLK_BUFG_BOT_R`, `CMT_TOP_L_LOWER_B`; затем изучать INIT, FF, BRAM content, PIP, clocking через реальные строки. На этом шаге **не делать** выводов о свободном region, не привязывать BRAM/IO к Ethernet или ASIC без трассировки.
 
+## EBAZ-27.10 — функциональные признаки конфигурации (PASS на CHUWI, 2026-11-09)
+
+Исполнен `tools/ebaz27-functional-evidence.py`; контрольная SHA256 `factory.fasm` повторно подтверждена: `f22e32fc1608a9cee8ce30757b7d8f2856b3a307492534b02aafa7b90738b66b`. Выходы локально: `/home/alex/ebaz27-xray/ebaz27-functional-evidence.json` и `ebaz27-functional-evidence.csv`. Контроль: **`EBAZ27_FUNCTIONAL_EVIDENCE_PASS (NOT UTILIZATION PASS)`**.
+
+| Свидетельство | Подсчёт |
+|---|---:|
+| Распознанные строки признаков FASM | 253 962 |
+| Уникальные позиции LUT с `INIT` в имени feature | 12 321 |
+| Строки признаков `LUT.INIT` | 12 321 |
+| Уникальные FF с хотя бы одним декодированным FF-атрибутом | 9 897 |
+| Строки FF-атрибутов | 19 775 |
+| Уникальные `FFMUX` labels | 10 317 |
+| Строки carry-setting features | 4 818 |
+| BRAM configuration feature lines | 4 555 |
+| INTERCONNECT feature lines | 171 971 |
+| I/O configuration feature lines | 890 |
+| MMCM configuration feature lines | 42 |
+| BUFGCTRL `.IN_USE` labels | 7 |
+| Unknown-bit annotations | 272, распределены по 24 frame addresses |
+
+Явные `BUFGCTRL.IN_USE` встречены для `BUFGCTRL_X0Y0`–`BUFGCTRL_X0Y6` в `CLK_BUFG_BOT_R_X82Y48`. Это **свидетельство включённых признаков**, не доказательство связности с определённой функциональной подсистемой или корректности DRC/STA.
+
+**Критическое ограничение.** Эти числа *не* означают 12 321 занятых LUT или 9 897 занятных FF; отсутствие `BRAM.INIT` или DSP features в данном простом классификаторе не доказывает отсутствия содержимого или использования. `LUT.INIT` и FF-атрибуты могут быть выражены в нерабочих или избыточных элементах. Статус EBAZ-27-FREE-REGION остаётся PENDING.
+
+**Следующий шаг (EBAZ-27.11):** ознакомиться с `sample_feature_names_not_values` из `by_tile_type.INT_L` и `INT_R` текущего JSON, проверить по базе X-Ray, как кодируются направленные PIP, затем отделять `PIP candidate` от не-маршрутных признаков, и только после этого пытаться строить граф маршрутов. Без извлечения tileconn/wire connectivity и проверки net attribution называть его полноценным netlist нельзя.
+
 ## Принцип проекта
 
 Майнер не является предметом отдельной разработки. Сохраняем аппаратные функции, необходимые независимой EBAZ4205 и Linux; специфическую логику хеширования, цепочек ASIC, майнинговых протоколов, адресации и управления процессом добычи в реконструированную PL не переносим. Если она обнаружится при анализе — помечаем `MINING_SPECIFIC` и исключаем при проектировании нового **совместимого** статического образа. Исходный заводской bitstream остаётся неизменным доказательственным образцом.
