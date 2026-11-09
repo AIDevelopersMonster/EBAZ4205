@@ -49,6 +49,24 @@
 
 Следующий **read-only** шаг: выполнить на штатной Linux через PS UART `hardware/ebaz28-axi-gpio/read_only_target_inventory.sh` (либо его команды вручную, без копирования в NAND), собрать реальные сведения о gpiochip, driver bindings, bootargs, ttyPS и MMIO map.
 
+## EBAZ-28.1C — анализ Linux 4.6 GPIO/PS UART/MMIO: READ-ONLY PASS (плата, 2026-11-09)
+
+По действующей заводской системе `root@zedboard-zynq7` получен следующий реальный **read-only** вывод:
+
+- `uname -a`: `Linux zedboard-zynq7 4.6.0-xilinx #5 SMP PREEMPT Mon May 8 14:36:49 CST 2017 armv7l`.
+- `/proc/cmdline`: `console=ttyPS0,115200 root=/dev/mtdblock6 rootfstype=jffs2 noinitrd rw rootwait` — основная консоль и загрузка NAND JFFS2 не должны нарушаться.
+- `/dev/ttyPS0`, `/dev/ttyPS1` существуют; `/proc/iomem` содержит PS UART `e0000000-e0000fff` и `e0001000-e0001fff`.
+- `/sys/class/gpio` существует, зарегистрирован `gpiochip906` → `/devices/soc0/amba/e000a000.gpio/gpio/gpiochip906` (**PS Zynq GPIO**, а не новый AXI GPIO в PL). `/proc/iomem` показывает `e000a000-e000afff`.
+- `/proc/config.gz` подтверждает `CONFIG_GPIOLIB=y`, `CONFIG_GPIO_SYSFS=y`. В выводе фильтра `CONFIG_GPIO_XILINX` нет; каталог `/sys/bus/platform/drivers/gpio-xilinx` отсутствует. **Стандартный драйвер для PL AXI GPIO в текущем ядре не обнаружен**, несмотря на работоспособность подсистемы GPIO. Драйвер доступен в Linux 4.6 через `CONFIG_GPIO_XILINX` и имеет совместимость DT `xlnx,xps-gpio-1.00.a`. Для PL AXI GPIO потребуется модуль, собранный под точную конфигурацию ядра при `CONFIG_MODULES=y`, либо альтернативное ядро с поддержкой.
+- `/proc/iomem`: `42c00000-42c0000f : uartlite`, `e000b000-e000bfff : /amba/ethernet@e000b000`; `0x41200000` *не перечислен*, но отсутствие диапазона в `/proc/iomem` **не доказывает**, что он не занят в физической карте или разрешён для нового IP. Требуется проверка Device Tree, AXI memory map и PS7 design.
+- DDR3 работоспособна при текущем заводском PS init; **не изменять** настройки DDR в новой PL и не делать выводов о допустимости полного PS7 replacement без проверки.
+
+**Решение**: сохранить стандартный **PL Xilinx AXI GPIO v2.0**, `M_AXI_GP0` → AXI Interconnect → `AXI GPIO`, proposed base `0x41200000`, output bits 0/1 → W14/W13 (active-low, сверить на реальной PCB). Отсутствие драйвера не повод переходить на blink/counter или нестандартное ПО. Для первого теста при условии безопасного cold boot GPIO можно держать выключенным в DT, а поддержанный драйвер добавить после отдельной проверки. Не делать `devmem` по адресу будущего PL до появления подтверждённого AXI slave.
+
+**Следующий read-only контроль** (из работающей системы): `cat /sys/class/gpio/gpiochip906/base`, `cat /sys/class/gpio/gpiochip906/ngpio`, `cat /sys/class/gpio/gpiochip906/label`; `zcat /proc/config.gz | grep -E 'GPIO_XILINX|GPIO_ZYNQ|MODULES|OF_GPIO|OF_DYNAMIC'`; `ls -la /sys/bus/platform/drivers | grep -i gpio`; `ls /lib/modules/$(uname -r) 2>/dev/null`; `ls /proc/device-tree/amba_pl`; `cat /proc/mtd`. Только чтение — **не** `echo N > /sys/class/gpio/export` и **не** `devmem`.
+
+Контроль состояний: `EBAZ28_FACTORY_LINUX_GPIO_BASELINE_PASS` = установлен действующий PS GPIO и GPIO framework; `EBAZ28_AXI_GPIO_KERNEL_DRIVER_PASS` = **PENDING**; `EBAZ28_NEW_PL_BOOT_PASS` = **PENDING**; `EBAZ28_LINUX_GPIO_BOOT_PASS` = **PENDING**. Безопасный вентилятор/PS-UART recovery и отдельный DTB — обязательные условия перед заменой заводской PL.
+
 ## Три различных вида заглушек (не смешивать)
 
 1. **DTB-safe (первый выбор):** в *альтернативном*, отдельно загружаемом DTB пометить зависимые PL-узлы `status = "disabled"`; до проверки точных путей live DT не писать готовые overlay/DTS адреса по памяти. Так не создаются соответствующие platform devices и не запускаются обычные `probe()` в Linux. Отдельно проверить GEM0 (это PS IP, но его физические линии идут через EMIO/PL), UARTLite, возможные прочие неизвестные PL потребители. Пустой `/proc/modules` **не значит**, что драйверов нет: часть встроена в ядро.
