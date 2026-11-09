@@ -9,6 +9,10 @@
 | [EBAZ4205_PS_MIO_PINMAP.csv](EBAZ4205_PS_MIO_PINMAP.csv) | 54 аппаратных вывода MIO процессорной системы XC7Z010; BGA, функция на плате, источник | По опубликованной распиновке; на нашем экземпляре MIO20/SW2 и MIO32/SW3 испытаны |
 | [EBAZ4205_DATA_CONNECTORS_PINMAP.csv](EBAZ4205_DATA_CONNECTORS_PINMAP.csv) | 42 сигнальных вывода PL по трём DATA-разъёмам, расположение и возможные применения | **REFERENCE** по чужим XDC; физическая пригодность и использование текущим bitstream не подтверждены |
 
+## Подключённая плата расширения
+
+[660269A_Y13 — визуальная карточка конкретной PCB](adapters/660269A_Y13/README.md): KEY1–KEY4, LED1–LED4, HDMI, питание 5V IN, соединители DATA1–3. **Есть фотографии, но нет электрически проверенного pinmap**. Соответствующие лаборатории — [LED/KEY](../tutorials/05_pl_led_key_adapter/README.md) и [HDMI](../tutorials/06_pl_hdmi_adapter/README.md), обе PENDING.
+
 ## Важные аппаратные ориентиры
 
 - **SW2** = MIO20 (BGA A17), Linux GPIO926. **SW3** = MIO32 (BGA A14), GPIO938. Нажатия обеих кнопок проверены на нашей плате при gpiochip base=906.
@@ -20,3 +24,4 @@
 Полные объяснения и источники: [EBAZ-21](../docs/EBAZ-21_BOARD_PINOUT_AND_FACTORY_FPGA_RU.md), [EBAZ-23](../docs/EBAZ-23_PS_MIO_EMIO_AVAILABLE_PINS_RU.md), [атлас сторонних проектов](../docs/EBAZ-21_COMMUNITY_PROJECTS_REVIEW_RU.md).
 
 **Правило использования CSV:** статус `REFERENCE` ≠ разрешение использовать вывод как GPIO; до подключений проверять электрическую схему, напряжение банка, фактическую установленную обвязку и актуальный bitstream.
+
