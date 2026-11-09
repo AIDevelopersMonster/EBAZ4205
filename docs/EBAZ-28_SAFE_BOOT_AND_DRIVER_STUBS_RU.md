@@ -93,6 +93,20 @@ ls -la /proc/device-tree/amba_pl/
 
 **Состояние:** `EBAZ28_FACTORY_GPIO_BASELINE_PASS`; `EBAZ28_AXI_GPIO_DRIVER_BUILD_PASS=PENDING`; `EBAZ28_AXI_GPIO_BOOT_PASS=PENDING`. Никакой тестовой PL, MMIO записи, NAND записи или hot PCAP не выполнялось.
 
+## EBAZ-28.1E — автономный AXI GPIO register probe без kernel module (offline native test PASS; hardware PENDING)
+
+Из фактических логов заводской платы: ядро `Linux 4.6.0-xilinx #5 PREEMPT SMP` собрано GCC 5.2.0; `CONFIG_MODULES=y`, `CONFIG_MODULE_UNLOAD=y`, **`CONFIG_MODVERSIONS=y`**, `CONFIG_OF_GPIO=y`, `CONFIG_GPIO_SYSFS=y`, `CONFIG_GPIO_ZYNQ=y`, но `# CONFIG_GPIO_XILINX is not set`. Каталог `/lib/modules/4.6.0-xilinx/kernel` присутствует, зато `/lib/modules/4.6.0-xilinx/build` и `source` отсутствуют. Соответствующая `Module.symvers`, Kconfig, generated headers и точная Xilinx source revision не подтверждены. Поэтому модуль `gpio-xilinx.ko` для заводской Linux **не заявлять как готовый**; несмотря на включённый `CONFIG_MODULES`, из mainline 4.6 он не обязательно загрузится из-за symbol CRC ABI.
+
+Для первичного теста **после** корректного cold boot новой PL с действующим AXI slave подготовлена независимая маленькая ARM-программа `software/ebaz28-axi-gpio-mmio/ebaz28_gpio_reg.c` в локальном ZIP `EBAZ28_AXI_GPIO_MMIO_offline_stage.zip`. Это **не** драйвер: просто регистровый клиент стандартного AXI GPIO. Предлагаемая база `0x41200000`; запись `DATA[1:0]=0…3` и `TRI=0` в заданном порядке, без timer/heartbeat, без чтения DATA как проверки выходного latch. `0` = оба active-low LED включены, `3` = оба выключены. Нормальная модель после установки gpio-xilinx — Linux GPIO, а не `/dev/mem`; параллельный MMIO и driver ownership запрещён.
+
+Программа **по умолчанию только планирует** (`--plan 0..3`) либо выполняет `--self-test` над локальным массивом `uint32_t`. `--execute` требует одновременно `--new-pl-verified --cold-boot-verified`, root и наличие `/proc/device-tree/amba_pl/gpio@41200000/compatible = xlnx,xps-gpio-1.00.a`, но эта проверка *не удостоверяет само существование аппаратного ответчика AXI*: при ошибке карты возможен зависший CPU. **Пока `--execute` запрещён**; для холодного испытания нужны реальная Vivado synth/place/route/DRC/STA, безопасный U-Boot/DTB RAM-only recovery, подтверждённая полярность LED и безопасное охлаждение.
+
+**Локально выполнено на отдельном host-компьютере:** компиляция C с `gcc -std=c11 -O2 -Wall -Wextra -Wpedantic -Werror`, `EBAZ28_MMIO_MOCK_TEST_PASS (NO HARDWARE ACCESSED)`, `EBAZ28_MMIO_OFFLINE_TESTS_PASS (NO HARDWARE ACCESSED)`; проверены все четыре значения DATA и отклонение `--execute` без подтверждения. Кросс-сборка ARM и реальный тест на EBAZ4205 **PENDING**. ZIP SHA256 `b14cff73aa9fdf1166720f663f00f02f901f7a71d24ccfd8ba7061dbe62f67e5`. Чистые исходники и инструкции внутри архива доступны пользователю; наличие ZIP в GitHub **не подтверждено**.
+
+**Два параллельных трека:**
+- `FPGA`: подготовить совместимую PS7+AXI GPIO PL и холодную загрузку тестового DTB, включая безопасное выключение UARTLite/BRAM/GEM до их восстановления;
+- `KERNEL`: позднее воспроизвести vendor build environment и `gpio-xilinx.ko` либо отдельный test kernel. Не заменять стандартный аппаратный GPIO собственной несовместимой шиной.
+
 ## Три различных вида заглушек (не смешивать)
 
 1. **DTB-safe (первый выбор):** в *альтернативном*, отдельно загружаемом DTB пометить зависимые PL-узлы `status = "disabled"`; до проверки точных путей live DT не писать готовые overlay/DTS адреса по памяти. Так не создаются соответствующие platform devices и не запускаются обычные `probe()` в Linux. Отдельно проверить GEM0 (это PS IP, но его физические линии идут через EMIO/PL), UARTLite, возможные прочие неизвестные PL потребители. Пустой `/proc/modules` **не значит**, что драйверов нет: часть встроена в ядро.
